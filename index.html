@@ -282,7 +282,7 @@
 
 <!-- 1. TELA DE LOGIN -->
 <div id="screen-login" class="card"> <!-- Adicionado a classe card aqui -->
-    <h3>Passagem de Carga | Conferência v6</h3>
+    <h3>Passagem de Carga | Conferência v7</h3>
     <label>E-mail</label>
     <input type="email" id="login-user" placeholder="seu@email.com">
     
@@ -2015,7 +2015,7 @@ async function enviarOcorrenciaFluxo() {
   const fotoInput = document.getElementById("oc_foto");
   const btn = document.getElementById("btnEnviarOcorrenciaFinal");
 
-  // 1. Validações Locais Básicas Obrigatórias (Mantidas 100% Originais)
+  // Validações originais obrigatórias mantidas
   if (!motivo) return alert("⚠️ Selecione o motivo da retenção!");
   if (!descricao.trim()) return alert("⚠️ Digite uma descrição detalhada!");
   if (!tokenDev.trim()) return alert("⚠️ Informe o TOKEN DE DEVOLUÇÃO!");
@@ -2025,100 +2025,97 @@ async function enviarOcorrenciaFluxo() {
     return alert("⚠️ É obrigatório anexar uma foto para evidenciar a Mercadoria Avariada/Danificada!");
   }
 
-  // 🔍 LEITURA DIRETA DO ROMANEIO ATIVO NA TELA (MÉTODO ULTRA SEGURO)
+  // =========================================================================
+  // 🔒 RESGATE FUNCIONALIDADE: CAPTURA E CONCATENAÇÃO DOS PEDIDOS SELECIONADOS
+  // =========================================================================
+  // Captura todos os checkboxes de pedidos marcados com divergência no painel
+  const checkboxes = document.querySelectorAll('input[name="oc_itens_selecionados"]:checked, input[name="adm_itens_selecionados"]:checked');
+  
+  if (checkboxes.length === 0) {
+    return alert("⚠️ É MANDATÓRIO selecionar ao menos um pedido com divergência/avaria no painel central!");
+  }
+
+  let itensTextoFormatado = "";
+  const listaCodigos = []; 
+  
+  // Varre os elementos e cria uma lista plana separada por vírgulas
+  checkboxes.forEach(cb => { 
+    if(cb.value) listaCodigos.push(cb.value.toString().trim());
+  });
+  
+  // Concatena na formatação exata solicitada para ir junto à descrição
+  itensTextoFormatado = "\n[Pedidos Afetados: " + listaCodigos.join(", ") + "]";
+  const descricaoFinalComItens = descricao.trim() + itensTextoFormatado;
+  // =========================================================================
+
+  // Captura direta do romaneio ativo na tela
   let romaneioId = "";
-  const elementoRomaneio = document.getElementById("romaneio") || document.getElementById("select-romaneio");
+  const elementoRomaneio = document.getElementById("romaneio");
   if (elementoRomaneio && elementoRomaneio.value) {
-    romaneioId = elementoRomaneio.value.toString().trim().toUpperCase(); //
+    romaneioId = elementoRomaneio.value.toString().trim().toUpperCase();
   }
   if (!romaneioId && typeof romaneioSendoFinalizado !== "undefined") {
-    romaneioId = romaneioSendoFinalizado.toString().trim().toUpperCase(); //
+    romaneioId = romaneioSendoFinalizado.toString().trim().toUpperCase();
   }
 
-  // 🔒 EXTRAÇÃO DO OPERADOR LOGADO VIA SESSÃO ATIVA EM CAIXA ALTA
-  let operadorSessao = sessionStorage.getItem("operadorSessaoAtiva") || "";
-  if (!operadorSessao) {
-    const elementoOperador = document.getElementById("login-transp") || document.getElementById("loginTransp") || document.querySelector("select");
-    if (elementoOperador && elementoOperador.value) {
-      operadorSessao = elementoOperador.value.toString().trim().toUpperCase();
-    }
-  }
-
-  // Trava o botão imediatamente para evitar cliques simultâneos
   btn.disabled = true;
   btn.innerText = "Validando Token...";
 
   try {
-    // 🔒 VALIDAÇÃO EXCLUSIVA DO TOKEN NO SERVIDOR (GET)
-    const urlValidacao = `${urlSheets}?action=consultarSegurancaOcorrencia&romaneio=${encodeURIComponent(romaneioId)}&operador=${encodeURIComponent(operadorSessao)}`;
+    // DISPARO DA VALIDAÇÃO DIRETA DO TOKEN NO SERVIDOR (GET)
+    const urlValidacao = `${urlSheets}?action=consultarSegurancaOcorrencia&romaneio=${encodeURIComponent(romaneioId)}`;
     
     const resValidacao = await fetch(urlValidacao);
     const dataValidacao = await resValidacao.json();
 
-    if (!dataValidacao || !dataValidacao.success) { //
+    if (!dataValidacao || !dataValidacao.success) {
       alert("❌ Erro de validação:\n\n" + (dataValidacao ? dataValidacao.error : "Sem resposta do servidor"));
       return; 
     }
 
-    // Confronta o TOKEN2 gerado dinamicamente na planilha mestre
+    // Confronta o TOKEN2 armazenado na planilha
     const tokenServidor = (dataValidacao.token2 || "").toString().trim();
     const tokenDigitadoLimpo = tokenDev.trim();
 
-    if (tokenServidor === "" || tokenDigitadoLimpo !== tokenServidor) { //
+    if (tokenServidor === "" || tokenDigitadoLimpo !== tokenServidor) {
       alert("❌ Erro: O Token de Devolução informado é inválido para este Romaneio.");
       return; 
     }
-
-    // CAPTURA E ESTRUTURAÇÃO DOS ITENS SELECIONADOS NO PAINEL MULTI-SELECT
-    const checkboxes = document.querySelectorAll('input[name="oc_itens_selecionados"]:checked, input[name="adm_itens_selecionados"]:checked');
-    let itensTextoFormatado = "";
-    const listaCodigos = []; 
-    if (checkboxes.length > 0) { //
-      checkboxes.forEach(cb => { //
-        if(cb.value) listaCodigos.push(cb.value.toString().trim());
-      });
-      itensTextoFormatado = "\n[Itens afetados: " + listaCodigos.join(", ") + "]"; //
-    }
  
-    const descricaoFinalComItens = descricao.trim() + itensTextoFormatado; //
     btn.innerText = "Processando arquivo...";
-
     let fotoBase64 = "";
     let fotoNome = "";
 
-    // Converte o arquivo de imagem em String Base64 limpa para envio assíncrono
     if (temFoto) {
-      const arquivo = fotoInput.files[0]; //
+      const arquivo = fotoInput.files;
       fotoNome = arquivo.name;
       fotoBase64 = await new Promise((resolve, reject) => {
         const reader = new FileReader();
-        reader.onload = () => resolve(reader.result.split(',')[1]); // Isola estritamente a parte binária pura
+        reader.onload = () => resolve(reader.result.split(',')); // Binário Base64 puro
         reader.onerror = error => reject(error);
         reader.readAsDataURL(arquivo);
       });
     }
 
-    btn.innerText = "Gravando..."; //
+    btn.innerText = "Gravando...";
 
-    // Estrutura o objeto de payload direcionado para a nova action transacional
+    // Prepara o payload para o fechamento transacional (POST)
     const payloadOcorrencia = {
       action: "salvarFluxoOcorrenciaCONF",
       romaneio: romaneioId,
       oc_motivo: motivo,
-      oc_descricao: descricaoFinalComItens, 
+      oc_descricao: descricaoFinalComItens, // Injeta o texto já concatenado com os códigos
       oc_token: tokenDigitadoLimpo,
       oc_foto_data: fotoBase64, 
       oc_foto_name: fotoNome,
-      oc_itens_remover: JSON.stringify(listaCodigos) // Preserva o array compactado para remoção reversa
+      oc_itens_remover: JSON.stringify(listaCodigos) // Envia a lista para o motor de deleção por FORNEC_LAST
     };
 
-    // Serializa os dados no formato x-www-form-urlencoded exigido pelo servidor
     const corpoFormulario = new URLSearchParams();
     Object.keys(payloadOcorrencia).forEach(key => {
       corpoFormulario.append(key, payloadOcorrencia[key]);
     });
 
-    // 🚀 DISPARO ASSÍNCRONO POST DIRECIONADO PARA O FLOW EXCLUSIVO DO BACK-GS
     const response = await fetch(urlSheets, {
       method: 'POST',
       body: corpoFormulario,
@@ -2128,58 +2125,39 @@ async function enviarOcorrenciaFluxo() {
     const result = await response.json();
     if (result.success) {
       
-      // A: Oculta a tela de ocorrência atual
-      const modalOcorrencia = document.getElementById("screenOcorrenciaLote");
+      // 1. Fecha e esconde o modal de ocorrência da tela imediatamente
+      const modalOcorrencia = document.getElementById("screenOcorrenciaLote") || document.getElementById("screen-intercorrencia");
       if (modalOcorrencia) {
         modalOcorrencia.style.display = "none";
         modalOcorrencia.classList.add("hidden");
       }
  
-      // B: Limpa o preview da imagem para o próximo lote
-      const imgPreview = document.getElementById('oc_foto_preview');
-      if (imgPreview) {
-        imgPreview.style.display = 'none';
-        imgPreview.src = '';
+      // 2. Executa a limpeza física dos campos preservando o seu fluxo mestre
+      if (typeof cancelarOcorrenciaEVoltar === "function") {
+        cancelarOcorrenciaEVoltar();
       }
-
-      // =========================================================================
-      // 🧹 ADIÇÃO CIRÚRGICA: RESET COMPLETO DOS CAMPOS TEXTUAIS E SELECTS
-      // =========================================================================
-      const selectMotivo = document.getElementById("oc_motivo");
-      if (selectMotivo) selectMotivo.selectedIndex = 0;
-
-      const inputFoto = document.getElementById("oc_foto");
-      if (inputFoto) inputFoto.value = "";
-
-      const checkboxes = document.querySelectorAll('input[name="oc_itens_selecionados"], input[name="adm_itens_selecionados"]');
-      checkboxes.forEach(cb => { cb.checked = false; });
-
-      const txtDescricao = document.getElementById("oc_descricao");
-      if (txtDescricao) txtDescricao.value = "";
-
-      const txtToken = document.getElementById("oc_token_devolucao");
-      if (txtToken) txtToken.value = "";
-      // =========================================================================
 
       alert("✅ Lote finalizado com sucesso!");
 
-      // C: Executa a função nativa de encerramento completa conforme solicitado
+      // 3. Executa estritamente a função de reset do sistema
       if (typeof resetarInterface === "function") {
-        resetarInterface(); 
+        resetarInterface();
       }
 
     } else {
       alert("❌ Erro ao finalizar lote no servidor: " + (result.error || "Tente novamente."));
     }
 
-  } catch (err) { //
-    console.error("Erro no fluxo de ocorrência:", err); //
-    alert("❌ Falha crítica: " + err.message); //
+  } catch (err) {
+    console.error("Erro no fluxo de ocorrência:", err);
+    alert("❌ Falha crítica: " + err.message);
+
   } finally {
-    btn.disabled = false; //
-    btn.innerText = "Enviar"; //
+    btn.disabled = false;
+    btn.innerText = "Enviar";
   }
 }
+
 
 
 
