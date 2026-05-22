@@ -282,7 +282,7 @@
 
 <!-- 1. TELA DE LOGIN -->
 <div id="screen-login" class="card"> <!-- Adicionado a classe card aqui -->
-    <h3>Passagem de Carga | Conferência v8</h3>
+    <h3>Passagem de Carga | Conferência v1</h3>
     <label>E-mail</label>
     <input type="email" id="login-user" placeholder="seu@email.com">
     
@@ -805,15 +805,6 @@ async function realizarLogin() {
             if (typeof tocarBeep === 'function') tocarBeep('sucesso');
             alert("✅ Bem-vindo(a), " + data.nome);
             
-            // =================================================================
-            // 🔒 ADIÇÃO CIRÚRGICA: PERSISTE O OPERADOR SELECIONADO NA MEMÓRIA LOCAL
-            // =================================================================
-            const selectTransp = document.getElementById("login-transp");
-            if (selectTransp) {
-                localStorage.setItem("operadorSessaoAtiva", selectTransp.value.toString().trim());
-            }
-            // =================================================================
-
             // -----------------------------------------------------------------
             // INJEÇÃO CIRÚRGICA: DETECÇÃO DO HARDWARE LOGO APÓS O LOGIN BEM-SUCEDIDO
             // -----------------------------------------------------------------
@@ -852,7 +843,6 @@ async function realizarLogin() {
         if (typeof enviandoDados !== 'undefined') enviandoDados = false;
     }
 }
-
 
 
 
@@ -2035,9 +2025,9 @@ async function enviarOcorrenciaFluxo() {
     return alert("⚠️ É obrigatório anexar uma foto para evidenciar a Mercadoria Avariada/Danificada!");
   }
 
-  // 🔍 LEITURA DIRETA DO ROMANEIO ATIVO NA TELA DO FRONT-CONF
+  // Captura do romaneio ativo na tela do Front-CONF
   let romaneioId = "";
-  const elementoRomaneio = document.getElementById("romaneio") || document.getElementById("select-romaneio");
+  const elementoRomaneio = document.getElementById("romaneio");
   if (elementoRomaneio && elementoRomaneio.value) {
     romaneioId = elementoRomaneio.value.toString().trim().toUpperCase();
   }
@@ -2045,47 +2035,31 @@ async function enviarOcorrenciaFluxo() {
     romaneioId = romaneioSendoFinalizado.toString().trim().toUpperCase();
   }
 
-  // 🔒 SOLUÇÃO DEFINITIVA: LEITURA EM CAIXA ALTA VIA MEMÓRIA LOCAL
-  // =========================================================================
-  let operadorSessao = localStorage.getItem("operadorSessaoAtiva") || "";
-  
-  // Força o valor recuperado a ficar em CAIXA ALTA para bater com o banco de dados
-  operadorSessao = operadorSessao.toString().trim().toUpperCase();
-  
-  // Fallbacks de segurança caso o LocalStorage falhe ou mude de sessão
+  // 🔒 Extrai o operador em caixa alta direto da memória da sessão gerada no login
+  let operadorSessao = sessionStorage.getItem("operadorSessaoAtiva") || "";
   if (!operadorSessao) {
-    const elementoOperador = document.getElementById("login-transp") || document.getElementById("loginTransp") || document.querySelector("select");
-    if (elementoOperador && elementoOperador.value) {
-      operadorSessao = elementoOperador.value.toString().trim().toUpperCase();
+    const inputTranspForm = document.getElementById("transp") || document.getElementById("login-transp");
+    if (inputTranspForm && inputTranspForm.value) {
+      operadorSessao = inputTranspForm.value.toString().toUpperCase().trim();
     }
   }
-  if (!operadorSessao && typeof transportadoraLogada !== "undefined") {
-    operadorSessao = transportadoraLogada.toString().trim().toUpperCase();
-  }
-
-  // Se mesmo com os fallbacks o operador não for achado, avisa o usuário
-  if (!operadorSessao) {
-    btn.disabled = false;
-    btn.innerText = "Enviar";
-    return alert("⚠️ Falha local: Não foi possível identificar o seu Operador Logístico logado. Recarregue a página.");
-  }
-  // =========================================================================
 
   btn.disabled = true;
   btn.innerText = "Validando Token...";
 
   try {
-    // 🔒 PASSO 1: CONSULTA DE VALIDAÇÃO DO TOKEN (GET) PASSANDO O OPERADOR ATIVO
-    const urlValidacao = `${urlSheets}?action=consultarTokensRomaneio&romaneio=${encodeURIComponent(romaneioId)}&operador=${encodeURIComponent(operadorSessao)}`;
+    // 🔒 CONEXÃO PONTUAL COM A NOVA ROTA EXCLUSIVA DE VALIDAÇÃO (GET)
+    const urlValidacao = `${urlSheets}?action=consultarSegurancaOcorrencia&romaneio=${encodeURIComponent(romaneioId)}&operador=${encodeURIComponent(operadorSessao)}`;
     
     const resValidacao = await fetch(urlValidacao);
     const dataValidacao = await resValidacao.json();
 
     if (!dataValidacao || !dataValidacao.success) {
-      alert("❌ Erro ao acessar validação no servidor:\n\n" + (dataValidacao ? dataValidacao.error : "Sem resposta"));
+      alert("❌ Erro de validação:\n\n" + (dataValidacao ? dataValidacao.error : "Sem resposta do servidor"));
       return; 
     }
 
+    // Validação cruzada estrita do Token de Devolução (TOKEN2) lido da tabela
     const tokenServidor = (dataValidacao.token2 || "").toString().trim();
     const tokenDigitadoLimpo = tokenDev.trim();
 
@@ -2094,7 +2068,21 @@ async function enviarOcorrenciaFluxo() {
       return; 
     }
 
-    // Coleta os códigos de pedidos selecionados no painel multi-select para exclusão reversa
+    // 🚨 REGRA DE SEGURANÇA VISUAL EM TELA: Se o TOKEN3 já estiver populado, bloqueia.
+    if (dataValidacao.token3 && dataValidacao.token3.toString().trim() !== "") {
+      alert(`⚠️ Operação Negada!\n\nEste fluxo de devolução já foi encerrado anteriormente (Token 3 preenchido: ${dataValidacao.token3}).`);
+      return;
+    }
+
+    // 🚨 REGRA DE INTERCORRÊNCIA EM TELA: Se constar como "CONCLUÍDO", bloqueia.
+    const textoBruto = (dataValidacao.intercorrencias || "").toString().trim();
+    const textoSanitizado = textoBruto.toUpperCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+    if (textoBruto !== "" && textoSanitizado.indexOf("CONCLUIDO") !== -1) {
+      alert(`⚠️ Operação Negada!\n\nEste Romaneio consta como CONCLUÍDO na coluna de Intercorrências.`);
+      return;
+    }
+
+    // Coleta os códigos de pedidos selecionados no painel multi-select
     const checkboxes = document.querySelectorAll('input[name="oc_itens_selecionados"]:checked, input[name="adm_itens_selecionados"]:checked');
     const listaCodigos = []; 
     if (checkboxes.length > 0) {
@@ -2108,12 +2096,12 @@ async function enviarOcorrenciaFluxo() {
     let fotoNome = "";
 
     if (temFoto) {
-      const arquivo = fotoInput.files[0];
+      const arquivo = fotoInput.files;
       fotoNome = arquivo.name;
       fotoBase64 = await new Promise((resolve, reject) => {
         const reader = new FileReader();
-        // O split separa o binário Base64 puro descartando descritores de metadados MIME
-        reader.onload = () => resolve(reader.result.split(',')[1]); 
+        // O split isola apenas os bytes binários puros da string Base64
+        reader.onload = () => resolve(reader.result.split(',')); 
         reader.onerror = error => reject(error);
         reader.readAsDataURL(arquivo);
       });
@@ -2121,17 +2109,17 @@ async function enviarOcorrenciaFluxo() {
 
     btn.innerText = "Gravando...";
 
-    // Montagem do payload completo estruturado para a action de salvamento final
+    // Montagem do payload estruturado direcionado para a nova action POST
     const payloadOcorrencia = {
-      action: "atualizarObsExtra",
+      action: "salvarFluxoOcorrenciaCONF",
       romaneio: romaneioId,
-      operador: operadorSessao, // Injeção mandatória para o doPost(e) do Back-GS
+      operador: operadorSessao, 
       oc_motivo: motivo,
       oc_descricao: descricao.trim(), 
       oc_token: tokenDigitadoLimpo,
       oc_foto_data: fotoBase64, 
       oc_foto_nome: fotoNome,
-      oc_itens_remover: JSON.stringify(listaCodigos) // Preserva o envio do array para remoção reversa
+      oc_itens_remover: JSON.stringify(listaCodigos)
     };
 
     const corpoFormulario = new URLSearchParams();
@@ -2139,7 +2127,7 @@ async function enviarOcorrenciaFluxo() {
       corpoFormulario.append(key, payloadOcorrencia[key]);
     });
 
-    // 🚀 DISPARO FINAL VIA POST MULTIPART COMPATÍVEL COM e.parameter
+    // 🚀 DISPARO ASSÍNCRONO POST DIRECIONADO PARA O FLOW EXCLUSIVO
     const response = await fetch(urlSheets, {
       method: 'POST',
       body: corpoFormulario,
@@ -2148,7 +2136,7 @@ async function enviarOcorrenciaFluxo() {
  
     const result = await response.json();
     if (result.success) {
-      alert("✅ Sucesso! Ocorrência registrada e lote finalizado com sucesso!");
+      alert("✅ Ocorrência registrada e Lote finalizado com sucesso!");
       window.location.reload(); 
     } else {
       alert("❌ Erro ao salvar a ocorrência no servidor: " + (result.error || "Tente novamente."));
@@ -2161,6 +2149,11 @@ async function enviarOcorrenciaFluxo() {
     btn.innerText = "Enviar";
   }
 }
+
+
+
+
+
 
 
 
