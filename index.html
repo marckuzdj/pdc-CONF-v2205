@@ -282,7 +282,7 @@
 
 <!-- 1. TELA DE LOGIN -->
 <div id="screen-login" class="card"> <!-- Adicionado a classe card aqui -->
-    <h3>Passagem de Carga | Conferência v12</h3>
+    <h3>Passagem de Carga | Conferência v13</h3>
     <label>E-mail</label>
     <input type="email" id="login-user" placeholder="seu@email.com">
     
@@ -1559,11 +1559,11 @@ function resetarTravaEnvio(btn, area) {
 }
 
 
-let intercorrenciaFinal = "CONCLUÍDO";
+//let intercorrenciaFinal = "CONCLUÍDO";
 
 async function finalizarLote() {
     if (enviandoDados) return;
-
+    let intercorrenciaFinal = ""
     const romaneioVal = document.getElementById("romaneio").value;
     const areaAssinatura = document.getElementById("areaAssinatura");
     const btn = document.querySelector("button[onclick='finalizarLote()']");
