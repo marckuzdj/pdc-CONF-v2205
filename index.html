@@ -282,7 +282,7 @@
 
 <!-- 1. TELA DE LOGIN -->
 <div id="screen-login" class="card"> <!-- Adicionado a classe card aqui -->
-    <h3>Passagem de Carga | Conferência v1</h3>
+    <h3>Passagem de Carga | Conferência v2</h3>
     <label>E-mail</label>
     <input type="email" id="login-user" placeholder="seu@email.com">
     
@@ -2015,7 +2015,7 @@ async function enviarOcorrenciaFluxo() {
   const fotoInput = document.getElementById("oc_foto");
   const btn = document.getElementById("btnEnviarOcorrenciaFinal");
 
-  // 1. Validações Locais Básicas Obrigatórias (Originais)
+  // Validações originais mantidas
   if (!motivo) return alert("⚠️ Selecione o motivo da retenção!");
   if (!descricao.trim()) return alert("⚠️ Digite uma descrição detalhada!");
   if (!tokenDev.trim()) return alert("⚠️ Informe o TOKEN DE DEVOLUÇÃO!");
@@ -2025,7 +2025,7 @@ async function enviarOcorrenciaFluxo() {
     return alert("⚠️ É obrigatório anexar uma foto para evidenciar a Mercadoria Avariada/Danificada!");
   }
 
-  // Captura do romaneio ativo na tela do Front-CONF
+  // Captura direta do romaneio ativo na tela
   let romaneioId = "";
   const elementoRomaneio = document.getElementById("romaneio");
   if (elementoRomaneio && elementoRomaneio.value) {
@@ -2035,21 +2035,12 @@ async function enviarOcorrenciaFluxo() {
     romaneioId = romaneioSendoFinalizado.toString().trim().toUpperCase();
   }
 
-  // 🔒 Extrai o operador em caixa alta direto da memória da sessão gerada no login
-  let operadorSessao = sessionStorage.getItem("operadorSessaoAtiva") || "";
-  if (!operadorSessao) {
-    const inputTranspForm = document.getElementById("transp") || document.getElementById("login-transp");
-    if (inputTranspForm && inputTranspForm.value) {
-      operadorSessao = inputTranspForm.value.toString().toUpperCase().trim();
-    }
-  }
-
   btn.disabled = true;
   btn.innerText = "Validando Token...";
 
   try {
-    // 🔒 CONEXÃO PONTUAL COM A NOVA ROTA EXCLUSIVA DE VALIDAÇÃO (GET)
-    const urlValidacao = `${urlSheets}?action=consultarSegurancaOcorrencia&romaneio=${encodeURIComponent(romaneioId)}&operador=${encodeURIComponent(operadorSessao)}`;
+    // DISPARO DA VALIDAÇÃO DIRETA DO TOKEN NO SERVIDOR (MÉTODO LIMPO - GET)
+    const urlValidacao = `${urlSheets}?action=consultarSegurancaOcorrencia&romaneio=${encodeURIComponent(romaneioId)}`;
     
     const resValidacao = await fetch(urlValidacao);
     const dataValidacao = await resValidacao.json();
@@ -2059,7 +2050,7 @@ async function enviarOcorrenciaFluxo() {
       return; 
     }
 
-    // Validação cruzada estrita do Token de Devolução (TOKEN2) lido da tabela
+    // Confronta o TOKEN2 armazenado na planilha
     const tokenServidor = (dataValidacao.token2 || "").toString().trim();
     const tokenDigitadoLimpo = tokenDev.trim();
 
@@ -2068,21 +2059,7 @@ async function enviarOcorrenciaFluxo() {
       return; 
     }
 
-    // 🚨 REGRA DE SEGURANÇA VISUAL EM TELA: Se o TOKEN3 já estiver populado, bloqueia.
-    if (dataValidacao.token3 && dataValidacao.token3.toString().trim() !== "") {
-      alert(`⚠️ Operação Negada!\n\nEste fluxo de devolução já foi encerrado anteriormente (Token 3 preenchido: ${dataValidacao.token3}).`);
-      return;
-    }
-
-    // 🚨 REGRA DE INTERCORRÊNCIA EM TELA: Se constar como "CONCLUÍDO", bloqueia.
-    const textoBruto = (dataValidacao.intercorrencias || "").toString().trim();
-    const textoSanitizado = textoBruto.toUpperCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
-    if (textoBruto !== "" && textoSanitizado.indexOf("CONCLUIDO") !== -1) {
-      alert(`⚠️ Operação Negada!\n\nEste Romaneio consta como CONCLUÍDO na coluna de Intercorrências.`);
-      return;
-    }
-
-    // Coleta os códigos de pedidos selecionados no painel multi-select
+    // Coleta os pedidos selecionados no painel multi-select
     const checkboxes = document.querySelectorAll('input[name="oc_itens_selecionados"]:checked, input[name="adm_itens_selecionados"]:checked');
     const listaCodigos = []; 
     if (checkboxes.length > 0) {
@@ -2096,12 +2073,11 @@ async function enviarOcorrenciaFluxo() {
     let fotoNome = "";
 
     if (temFoto) {
-      const arquivo = fotoInput.files;
+      const arquivo = fotoInput.files[0];
       fotoNome = arquivo.name;
       fotoBase64 = await new Promise((resolve, reject) => {
         const reader = new FileReader();
-        // O split isola apenas os bytes binários puros da string Base64
-        reader.onload = () => resolve(reader.result.split(',')); 
+        reader.onload = () => resolve(reader.result.split(',')[1]); // Binário Base64 100% puro
         reader.onerror = error => reject(error);
         reader.readAsDataURL(arquivo);
       });
@@ -2109,16 +2085,15 @@ async function enviarOcorrenciaFluxo() {
 
     btn.innerText = "Gravando...";
 
-    // Montagem do payload estruturado direcionado para a nova action POST
+    // Prepara o payload para o fechamento transacional (POST)
     const payloadOcorrencia = {
       action: "salvarFluxoOcorrenciaCONF",
       romaneio: romaneioId,
-      operador: operadorSessao, 
       oc_motivo: motivo,
       oc_descricao: descricao.trim(), 
       oc_token: tokenDigitadoLimpo,
       oc_foto_data: fotoBase64, 
-      oc_foto_nome: fotoNome,
+      oc_foto_name: fotoNome,
       oc_itens_remover: JSON.stringify(listaCodigos)
     };
 
@@ -2127,7 +2102,6 @@ async function enviarOcorrenciaFluxo() {
       corpoFormulario.append(key, payloadOcorrencia[key]);
     });
 
-    // 🚀 DISPARO ASSÍNCRONO POST DIRECIONADO PARA O FLOW EXCLUSIVO
     const response = await fetch(urlSheets, {
       method: 'POST',
       body: corpoFormulario,
@@ -2139,7 +2113,7 @@ async function enviarOcorrenciaFluxo() {
       alert("✅ Ocorrência registrada e Lote finalizado com sucesso!");
       window.location.reload(); 
     } else {
-      alert("❌ Erro ao salvar a ocorrência no servidor: " + (result.error || "Tente novamente."));
+      alert("❌ Erro ao finalizar lote no servidor: " + (result.error || "Tente novamente."));
     }
   } catch (err) {
     console.error("Erro no fluxo de ocorrência:", err);
@@ -2149,6 +2123,7 @@ async function enviarOcorrenciaFluxo() {
     btn.innerText = "Enviar";
   }
 }
+
 
 
 
