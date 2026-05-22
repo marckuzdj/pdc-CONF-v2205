@@ -282,7 +282,7 @@
 
 <!-- 1. TELA DE LOGIN -->
 <div id="screen-login" class="card"> <!-- Adicionado a classe card aqui -->
-    <h3>Passagem de Carga | Conferência v5</h3>
+    <h3>Passagem de Carga | Conferência v6</h3>
     <label>E-mail</label>
     <input type="email" id="login-user" placeholder="seu@email.com">
     
@@ -2168,19 +2168,21 @@ async function enviarOcorrenciaFluxo() {
       }
 
       alert("✅ Ocorrência registrada e Lote finalizado com sucesso!");
-      window.location.reload(); // Recarrega a página limpando e resetando o cache completo com segurança
+      window.location.reload(); 
 
     } else {
       alert("❌ Erro ao salvar a ocorrência no servidor: " + (result.error || "Tente novamente."));
     }
   } catch (err) {
+    // CORREÇÃO: Mantido apenas um único bloco catch limpo e padronizado
     console.error("Erro no fluxo de ocorrência:", err);
     alert("❌ Falha crítica: " + err.message);
-  } catch {
+  } finally {
     btn.disabled = false;
     btn.innerText = "Enviar";
   }
 }
+
 
 
 
