@@ -1559,11 +1559,12 @@ function resetarTravaEnvio(btn, area) {
 }
 
 
-//let intercorrenciaFinal = "CONCLUÍDO";
+let intercorrenciaFinal = "CONCLUÍDO";
 
 async function finalizarLote() {
+    let intercorrenciaFinal = ""Volumes confirmados / CONCLUÍDO"
     if (enviandoDados) return;
-    let intercorrenciaFinal = ""
+
     const romaneioVal = document.getElementById("romaneio").value;
     const areaAssinatura = document.getElementById("areaAssinatura");
     const btn = document.querySelector("button[onclick='finalizarLote()']");
