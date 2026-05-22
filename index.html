@@ -282,7 +282,7 @@
 
 <!-- 1. TELA DE LOGIN -->
 <div id="screen-login" class="card"> <!-- Adicionado a classe card aqui -->
-    <h3>Passagem de Carga | Conferência v3</h3>
+    <h3>Passagem de Carga | Conferência v4</h3>
     <label>E-mail</label>
     <input type="email" id="login-user" placeholder="seu@email.com">
     
@@ -2015,7 +2015,7 @@ async function enviarOcorrenciaFluxo() {
   const fotoInput = document.getElementById("oc_foto");
   const btn = document.getElementById("btnEnviarOcorrenciaFinal");
 
-  // 1. Validações Locais Básicas Obrigatórias (Mantidas originais)
+  // 1. Validações Locais Básicas Obrigatórias (Mantidas 100% originais)
   if (!motivo) return alert("⚠️ Selecione o motivo da retenção!");
   if (!descricao.trim()) return alert("⚠️ Digite uma descrição detalhada!");
   if (!tokenDev.trim()) return alert("⚠️ Informe o TOKEN DE DEVOLUÇÃO!");
@@ -2025,20 +2025,41 @@ async function enviarOcorrenciaFluxo() {
     return alert("⚠️ É obrigatório anexar uma foto para evidenciar a Mercadoria Avariada/Danificada!");
   }
 
-  // 🔒 CAPTURA CIRÚRGICA DE SEGURANÇA: Extrai o operador selecionado no login do Front-CONF
-  // Substitua 'login-transp' pelo ID exato do seu select de transportadora se necessário
-  const selectTranspLogin = document.getElementById("login-transp") || document.querySelector("#screen-login select");
-  const operadorSessao = selectTranspLogin ? selectTranspLogin.value.toString().trim() : "";
+  // =========================================================================
+  // 🔒 CAPTURA INFALÍVEL DO OPERADOR LOGADO DE FORMA MULTI-ID
+  // =========================================================================
+  let operadorSessao = "";
+  const seletoresOperador = [
+    document.getElementById("login-transp"),
+    document.getElementById("loginTransp"),
+    document.getElementById("transp"),
+    document.getElementById("operador"),
+    document.querySelector("#screen-login select"),
+    document.querySelector("select") 
+  ];
+
+  for (let i = 0; i < seletoresOperador.length; i++) {
+    if (seletoresOperador[i] && seletoresOperador[i].value) {
+      operadorSessao = seletoresOperador[i].value.toString().trim();
+      if (operadorSessao !== "") break; 
+    }
+  }
+
+  // Fallbacks de segurança se o HTML limpou o select do formulário pós-login
+  if (operadorSessao === "" && typeof transportadoraLogada !== "undefined") {
+    operadorSessao = transportadoraLogada;
+  }
+  if (operadorSessao === "" && typeof usuarioLogado !== "undefined") {
+    operadorSessao = usuarioLogado; 
+  }
+  // =========================================================================
 
   // Trava o botão imediatamente para evitar cliques simultâneos
   btn.disabled = true;
   btn.innerText = "Validando Token...";
 
   try {
-    // =========================================================================
-    // 🔒 VALIDAÇÃO DO TOKEN ADAPTADA COM FILTRO DE OPERADOR (GET)
-    // =========================================================================
-    // Injeta o parâmetro &operador= para passar pela trava de segurança do Back-GS
+    // 🔒 VALIDAÇÃO DO TOKEN NO SERVIDOR (GET) - Passando o operador capturado
     const urlValidacao = `${urlSheets}?action=consultarTokensRomaneio&romaneio=${encodeURIComponent(romaneioSendoFinalizado)}&operador=${encodeURIComponent(operadorSessao)}`;
     
     const resValidacao = await fetch(urlValidacao);
@@ -2062,35 +2083,32 @@ async function enviarOcorrenciaFluxo() {
       return; // CORTA A EXECUÇÃO IMEDIATAMENTE E IMPEDE O POST
     }
 
-    // =========================================================================
-    // ✅ ADIÇÃO CIRÚRGICA: CAPTURA E ESTRUTURAÇÃO DOS ITENS SELECIONADOS
-    // =========================================================================
+    // ✅ CAPTURA E ESTRUTURAÇÃO DOS ITENS SELECIONADOS
     const checkboxes = document.querySelectorAll('input[name="oc_itens_selecionados"]:checked');
     let itensTextoFormatado = "";
     const listaCodigos = []; 
-
+ 
     if (checkboxes.length > 0) {
       checkboxes.forEach(cb => {
         if(cb.value) listaCodigos.push(cb.value.toString().trim());
       });
       itensTextoFormatado = "\n[Itens afetados: " + listaCodigos.join(", ") + "]";
     }
-
+ 
     const descricaoFinalComItens = descricao.trim() + itensTextoFormatado;
-
+ 
     // TOKEN APROVADO! SE CHEGOU AQUI, O TOKEN É VÁLIDO.
     btn.innerText = "Processando arquivo...";
 
     let fotoBase64 = "";
     let fotoNome = "";
 
-    // Converte o arquivo de imagem para string Base64 limpa
+    // Converte o arquivo de imagem para string Base64
     if (temFoto) {
       const arquivo = fotoInput.files[0];
       fotoNome = arquivo.name;
       fotoBase64 = await new Promise((resolve, reject) => {
         const reader = new FileReader();
-        // Index [1] isola a string Base64 pura descartando metadados de cabeçalho MIME
         reader.onload = () => resolve(reader.result.split(',')[1]);
         reader.onerror = error => reject(error);
         reader.readAsDataURL(arquivo);
@@ -2099,11 +2117,11 @@ async function enviarOcorrenciaFluxo() {
 
     btn.innerText = "Gravando...";
 
-    // payload estruturado para a action de salvamento final
+    // Monta o payload completo estruturado
     const payloadOcorrencia = {
       action: "atualizarObsExtra",
       romaneio: romaneioSendoFinalizado,
-      operador: operadorSessao, // 🔒 ADICIONADO: Envia o operador para auditoria no POST
+      operador: operadorSessao, // Adicionado para validação do POST no Back-GS
       oc_motivo: motivo,
       oc_descricao: descricaoFinalComItens, 
       oc_token: tokenDigitadoLimpo,
@@ -2112,32 +2130,28 @@ async function enviarOcorrenciaFluxo() {
       oc_itens_remover: listaCodigos 
     };
 
-    // =========================================================================
-    // 🚀 ENVIO FINAL DA OCORRÊNCIA ADAPTADO PARA x-www-form-urlencoded
-    // =========================================================================
-    // Modificado para usar URLSearchParams, garantindo compatibilidade com o e.parameter do Back-GS
-    const corpoForm = new URLSearchParams();
+    // Envia os dados estruturados via POST clássico estruturado como URLSearchParams
+    const corpoFormulario = new URLSearchParams();
     Object.keys(payloadOcorrencia).forEach(key => {
       if (key === "oc_itens_remover") {
-        corpoForm.append(key, JSON.stringify(payloadOcorrencia[key]));
+        corpoFormulario.append(key, JSON.stringify(payloadOcorrencia[key]));
       } else {
-        corpoForm.append(key, payloadOcorrencia[key]);
+        corpoFormulario.append(key, payloadOcorrencia[key]);
       }
     });
 
     const response = await fetch(urlSheets, {
       method: 'POST',
-      body: corpoForm,
+      body: corpoFormulario,
       headers: { 'Content-Type': 'application/x-www-form-urlencoded' }
     });
-
+ 
     const result = await response.json();
-    
     if (result.success) {
       document.getElementById("screenOcorrenciaLote").style.display = "none";
       document.getElementById("screenOcorrenciaLote").classList.add("hidden");
-
-      // LIMPEZA DO PREVIEW
+ 
+      // LIMPEZA DO PREVIEW ADICIONADA ANTERIORMENTE
       const imgPreview = document.getElementById('oc_foto_preview');
       if (imgPreview) {
         imgPreview.style.display = 'none';
@@ -2162,10 +2176,10 @@ async function enviarOcorrenciaFluxo() {
           select.add(new Option(nome, nome));
         });
       }
-
+ 
       alert("✅ Ocorrência registrada e Lote finalizado com sucesso!");
       if (typeof resetarInterface === "function") resetarInterface();
-      
+
     } else {
       alert("❌ Erro ao salvar a ocorrência no servidor: " + (result.error || "Tente novamente."));
     }
@@ -2177,6 +2191,7 @@ async function enviarOcorrenciaFluxo() {
     btn.innerText = "Enviar";
   }
 }
+
 
 
 
