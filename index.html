@@ -282,7 +282,7 @@
 
 <!-- 1. TELA DE LOGIN -->
 <div id="screen-login" class="card"> <!-- Adicionado a classe card aqui -->
-    <h3>Passagem de Carga | Conferência v10</h3>
+    <h3>Passagem de Carga | Conferência v11</h3>
     <label>E-mail</label>
     <input type="email" id="login-user" placeholder="seu@email.com">
     
@@ -2015,7 +2015,7 @@ async function enviarOcorrenciaFluxo() {
   const fotoInput = document.getElementById("oc_foto");
   const btn = document.getElementById("btnEnviarOcorrenciaFinal");
 
-  // Força o isolamento total do texto digitado para limpar caches de memória local
+  // Força o isolamento total do texto digitado para limpar caches residuais de memória local
   const textoDigitadoUsuario = descricaoInput ? descricaoInput.value.toString().trim() : "";
 
   // 1. Validações Locais Básicas Obrigatórias (Originais mantidas)
@@ -2028,7 +2028,7 @@ async function enviarOcorrenciaFluxo() {
     return alert("⚠️ É obrigatório anexar uma foto para evidenciar a Mercadoria Avariada/Danificada!");
   }
 
-  // 🔒 ADIÇÃO: Captura e concatenação horizontal obrigatória dos pedidos selecionados
+  // Captura e concatenação horizontal obrigatória dos pedidos selecionados
   const checkboxes = document.querySelectorAll('input[name="oc_itens_selecionados"]:checked, input[name="adm_itens_selecionados"]:checked');
   
   if (checkboxes.length === 0) {
@@ -2082,7 +2082,7 @@ async function enviarOcorrenciaFluxo() {
     let fotoNome = "";
 
     if (temFoto) {
-      const arquivo = fotoInput.files[0]; // Extrai o Blob individual correto da lista física
+      const arquivo = fotoInput.files[0]; // Extrai o Blob individual correto
       fotoNome = arquivo.name;
       fotoBase64 = await new Promise((resolve, reject) => {
         const reader = new FileReader();
@@ -2098,7 +2098,7 @@ async function enviarOcorrenciaFluxo() {
     const payloadOcorrencia = {
       action: "salvarFluxoOcorrenciaCONF",
       romaneio: romaneioId,
-      oc_motivo: motivo, // Sincronizado perfeitamente com a variável do topo
+      oc_motivo: motivo, 
       oc_descricao: descricaoFinalComItens, 
       oc_token: tokenDigitadoLimpo,
       oc_foto_data: fotoBase64, 
@@ -2120,21 +2120,22 @@ async function enviarOcorrenciaFluxo() {
     const result = await response.json();
     if (result.success) {
       
-      // A: Oculta a tela de ocorrência atual
-      const modalOcorrencia = document.getElementById("screenOcorrenciaLote");
-      if (modalOcorrencia) {
-        modalOcorrencia.style.display = "none";
-        modalOcorrencia.classList.add("hidden");
-      }
- 
-      // B: Executa a limpeza física de todos os inputs e do preview de imagem
+      // =========================================================================
+      // 🧼 INTERCEPTAÇÃO DE SUCESSO: ACIONA A LIMPEZA TOTAL DA MEMÓRIA IMEDIATAMENTE
+      // =========================================================================
+      // Executa a limpeza física de todos os inputs, selects, variáveis globais e imagens
       if (typeof cancelarOcorrenciaEVoltar === "function") {
         cancelarOcorrenciaEVoltar();
+      } else {
+        // Fallback redundante caso a função de voltar sofra alterações de escopo futuro
+        if (descricaoInput) descricaoInput.value = "";
+        if (checkboxes) checkboxes.forEach(cb => { cb.checked = false; });
       }
+      // =========================================================================
 
       alert("✅ Lote finalizado com sucesso!");
 
-      // C: Executa a esteira nativa de encerramento completa do sistema
+      // Executa a esteira nativa de encerramento completa do sistema
       if (typeof resetarInterface === "function") {
         resetarInterface();
       }
@@ -2152,6 +2153,7 @@ async function enviarOcorrenciaFluxo() {
     btn.innerText = "Enviar";
   }
 }
+
 
 
 
@@ -2224,106 +2226,101 @@ function mostrarPreviewFoto(input) {
 
 
 function cancelarOcorrenciaEVoltar() {
- // =========================================================================
- // CORREÇÃO CRÍTICA: SEGURO CONTRA DUPLICAÇÃO DE PREFIXO NA VARIÁVEL GLOBAL
- // =========================================================================
- if (typeof intercorrenciaFinal !== "undefined" && intercorrenciaFinal) {
- // Expressão regular que localiza todas as ocorrências repetidas do prefixo
- const regexLimparPrefixo = /\s*Volumes\s+confirmados\s*\/\s*/gi;
- 
- // Remove completamente o prefixo duplicado acumulado na variável global
- intercorrenciaFinal = intercorrenciaFinal.replace(regexLimparPrefixo, "").trim();
- 
- console.log("Variável global higienizada (sem duplicações):", intercorrenciaFinal);
- }
- 
- // 1. Oculta la tela de ocorrência atual
- const telaOc = document.getElementById("screenOcorrenciaLote");
- if (telaOc) {
- telaOc.style.display = "none";
- telaOc.classList.add("hidden");
- }
- 
- // 2. Garante que a tela principal volte a aparecer
- const telaPrincipal = document.getElementById("screen-main");
- if (telaPrincipal) {
- telaPrincipal.style.display = "block";
- telaPrincipal.classList.remove("hidden");
- }
- 
- // 3. Restaura o botão original "Finalizar Lote"
- const btnPrincipal = document.querySelector("button[onclick='finalizarLote()']") 
-|| document.getElementById("btnEnviarLote");
- if (btnPrincipal) {
- btnPrincipal.disabled = false;
- btnPrincipal.innerHTML = "Finalizar Lote"; 
- btnPrincipal.style.backgroundColor = ""; 
- btnPrincipal.style.display = "block"; 
- btnPrincipal.classList.remove("hidden");
- }
+  // =========================================================================
+  // 🔒 REGRA ORIGINAL: SEGURO CONTRA DUPLICAÇÃO DE PREFIXO NA VARIÁVEL GLOBAL
+  // =========================================================================
+  if (typeof intercorrenciaFinal !== "undefined" && intercorrenciaFinal) {
+    const regexLimparPrefixo = /\s*Volumes\s+confirmados\s*\/\s*/gi;
+    intercorrenciaFinal = intercorrenciaFinal.replace(regexLimparPrefixo, "").trim();
+    console.log("Variável global higienizada (sem duplicações):", intercorrenciaFinal);
+  }
 
- // 4. Limpa e esconde o contêiner de assinatura
- const canvas = document.getElementById('canvasAssinatura');
- if (canvas) {
- const ctx = canvas.getContext('2d');
- if (ctx) ctx.clearRect(0, 0, canvas.width, canvas.height); 
- }
- 
- // Esconde todo o bloco/container da assinatura (Card de desenho e links)
- const areaAssinatura = document.getElementById("areaAssinatura");
- if (areaAssinatura) {
- areaAssinatura.style.display = "none"; 
- areaAssinatura.classList.add("hidden");
- areaAssinatura.style.opacity = "1";
- areaAssinatura.style.pointerEvents = "auto";
- }
+  // 1. Oculta a tela de ocorrência atual
+  const telaOc = document.getElementById("screenOcorrenciaLote");
+  if (telaOc) {
+    telaOc.style.display = "none";
+    telaOc.classList.add("hidden");
+  }
 
- // 5. Remove a string parcial do cache local da lista também por segurança
- if (typeof dadosCompletos !== 'undefined' && dadosCompletos.length > 0) {
- const dadosRomaneio = dadosCompletos.find(item => 
- (item.Romaneio && item.Romaneio.toString().toUpperCase() === romaneioSendoFinalizado.toString().toUpperCase()) || 
- (item.romaneio && item.romaneio.toString().toUpperCase() === romaneioSendoFinalizado.toString().toUpperCase()) ||
- (item.id && item.id.toString().toUpperCase() === romaneioSendoFinalizado.toString().toUpperCase())
- );
- 
- if (dadosRomaneio) {
- let historicoObs = (dadosRomaneio.Intercorrencia || dadosRomaneio.intercorrencia || dadosRomaneio.INTERCORRENCIAS || "").toString().trim();
- const regexLimpezaCompleta = /\s*Volumes\s+confirmados\s*\/\s*CONCLU[ÍI]DO\s*|\s*Volumes\s+confirmados\s*\/\s*/gi;
- historicoObs = historicoObs.replace(regexLimpezaCompleta, "").trim();
- if ('Intercorrencia' in dadosRomaneio) dadosRomaneio.Intercorrencia = historicoObs;
- if ('intercorrencia' in dadosRomaneio) dadosRomaneio.intercorrencia = historicoObs;
- if ('INTERCORRENCIAS' in dadosRomaneio) dadosRomaneio.INTERCORRENCIAS = historicoObs;
- }
- }
- 
- if (typeof enviandoDados !== 'undefined') enviandoDados = false;
- console.log("Interface retrocedida e travamento de duplicação resolvido com sucesso.");
+  // 2. Garante que a tela principal volte a aparecer
+  const telaPrincipal = document.getElementById("screen-main");
+  if (telaPrincipal) {
+    telaPrincipal.style.display = "block";
+    telaPrincipal.classList.remove("hidden");
+  }
 
- // =========================================================================
- // 🧹 ADIÇÃO CIRÚRGICA DE ENCERRAMENTO: RESET DE TODOS OS INPUTS DO MODAL
- // =========================================================================
- const selectMotivo = document.getElementById("oc_motivo");
- if (selectMotivo) selectMotivo.selectedIndex = 0;
+  // 3. Restaura o botão original "Finalizar Lote"
+  const btnPrincipal = document.querySelector("button[onclick='finalizarLote()']") || document.getElementById("btnEnviarLote");
+  if (btnPrincipal) {
+    btnPrincipal.disabled = false;
+    btnPrincipal.innerHTML = "Finalizar Lote"; 
+    btnPrincipal.style.backgroundColor = ""; 
+    btnPrincipal.style.display = "block"; 
+    btnPrincipal.classList.remove("hidden");
+  }
 
- const inputFoto = document.getElementById("oc_foto");
- if (inputFoto) inputFoto.value = "";
- 
- const imgPreview = document.getElementById('oc_foto_preview');
- if (imgPreview) {
- imgPreview.style.display = 'none';
- imgPreview.src = '';
- }
+  // 4. Limpa e esconde o contêiner de assinatura
+  const canvas = document.getElementById('canvasAssinatura');
+  if (canvas) {
+    const ctx = canvas.getContext('2d');
+    if (ctx) ctx.clearRect(0, 0, canvas.width, canvas.height); 
+  }
 
- const checkboxes = document.querySelectorAll('input[name="oc_itens_selecionados"], input[name="adm_itens_selecionados"]');
- checkboxes.forEach(cb => { cb.checked = false; });
+  const areaAssinatura = document.getElementById("areaAssinatura");
+  if (areaAssinatura) {
+    areaAssinatura.style.display = "none"; 
+    areaAssinatura.classList.add("hidden");
+    areaAssinatura.style.opacity = "1";
+    areaAssinatura.style.pointerEvents = "auto";
+  }
 
- const txtDescricao = document.getElementById("oc_descricao");
- if (txtDescricao) txtDescricao.value = "";
+  // 5. Remove a string parcial do cache local da lista também por segurança
+  if (typeof dadosCompletos !== 'undefined' && dadosCompletos.length > 0) {
+    const dadosRomaneio = dadosCompletos.find(item => 
+      (item.Romaneio && item.Romaneio.toString().toUpperCase() === romaneioSendoFinalizado.toString().toUpperCase()) || 
+      (item.romaneio && item.romaneio.toString().toUpperCase() === romaneioSendoFinalizado.toString().toUpperCase()) ||
+      (item.id && item.id.toString().toUpperCase() === romaneioSendoFinalizado.toString().toUpperCase())
+    );
 
- const txtToken = document.getElementById("oc_token_devolucao");
- if (txtToken) txtToken.value = "";
- // =========================================================================
+    if (dadosRomaneio) {
+      let historicoObs = (dadosRomaneio.Intercorrencia || dadosRomaneio.intercorrencia || dadosRomaneio.INTERCORRENCIAS || "").toString().trim();
+      const regexLimpezaCompleta = /\s*Volumes\s+confirmados\s*\/\s*CONCLU[ÍI]DO\s*|\s*Volumes\s+confirmados\s*\/\s*/gi;
+      historicoObs = historicoObs.replace(regexLimpezaCompleta, "").trim();
+      
+      if ('Intercorrencia' in dadosRomaneio) dadosRomaneio.Intercorrencia = historicoObs;
+      if ('intercorrencia' in dadosRomaneio) dadosRomaneio.intercorrencia = historicoObs;
+      if ('INTERCORRENCIAS' in dadosRomaneio) dadosRomaneio.INTERCORRENCIAS = historicoObs;
+    }
+  }
+
+  if (typeof enviandoDados !== 'undefined') enviandoDados = false;
+  console.log("Interface retrocedida e travamento de duplicação resolvido com sucesso.");
+
+  // =========================================================================
+  // 🧹 ADIÇÃO CIRÚRGICA DE ENCERRAMENTO: RESET DE TODOS OS INPUTS DO MODAL
+  // =========================================================================
+  const selectMotivo = document.getElementById("oc_motivo");
+  if (selectMotivo) selectMotivo.selectedIndex = 0;
+
+  const inputFoto = document.getElementById("oc_foto");
+  if (inputFoto) inputFoto.value = "";
+
+  const imgPreview = document.getElementById('oc_foto_preview');
+  if (imgPreview) {
+    imgPreview.style.display = 'none';
+    imgPreview.src = '';
+  }
+
+  const checkboxes = document.querySelectorAll('input[name="oc_itens_selecionados"], input[name="adm_itens_selecionados"]');
+  checkboxes.forEach(cb => { cb.checked = false; });
+
+  const txtDescricao = document.getElementById("oc_descricao");
+  if (txtDescricao) txtDescricao.value = "";
+
+  const txtToken = document.getElementById("oc_token_devolucao");
+  if (txtToken) txtToken.value = "";
 }
+
 
 
 
