@@ -282,7 +282,7 @@
 
 <!-- 1. TELA DE LOGIN -->
 <div id="screen-login" class="card"> <!-- Adicionado a classe card aqui -->
-    <h3>Passagem de Carga | Conferência v15</h3>
+    <h3>Passagem de Carga | Conferência v16</h3>
     <label>E-mail</label>
     <input type="email" id="login-user" placeholder="seu@email.com">
     
@@ -1562,7 +1562,7 @@ function resetarTravaEnvio(btn, area) {
 let intercorrenciaFinal = "CONCLUÍDO";
 
 async function finalizarLote() {
-   // let intercorrenciaFinal = "Volumes confirmados / CONCLUÍDO"
+
     if (enviandoDados) return;
 
     const romaneioVal = document.getElementById("romaneio").value;
@@ -2121,22 +2121,42 @@ async function enviarOcorrenciaFluxo() {
     const result = await response.json();
     if (result.success) {
       
-      // =========================================================================
-      // 🧼 INTERCEPTAÇÃO DE SUCESSO: ACIONA A LIMPEZA TOTAL DA MEMÓRIA IMEDIATAMENTE
-      // =========================================================================
-      // Executa a limpeza física de todos os inputs, selects, variáveis globais e imagens
+      // A: Oculta a tela de ocorrência atual
+      const modalOcorrencia = document.getElementById("screenOcorrenciaLote");
+      if (modalOcorrencia) {
+        modalOcorrencia.style.display = "none";
+        modalOcorrencia.classList.add("hidden");
+      }
+ 
+      // B: Executa a limpeza física de todos os inputs da tela
       if (typeof cancelarOcorrenciaEVoltar === "function") {
         cancelarOcorrenciaEVoltar();
-      } else {
-        // Fallback redundante caso a função de voltar sofra alterações de escopo futuro
-        if (descricaoInput) descricaoInput.value = "";
-        if (checkboxes) checkboxes.forEach(cb => { cb.checked = false; });
+      }
+
+      // =========================================================================
+      // 💣 NOVO: HARD CLEAN DO CACHE DO ARRAY DA PÁGINA (DADOSCOMPLETOS)
+      // =========================================================================
+      // Remove o histórico antigo da memória da página para que o botão 'Não'
+      // detecte que a linha agora está livre, gravando apenas o texto padrão.
+      if (typeof dadosCompletos !== 'undefined' && dadosCompletos.length > 0 && typeof romaneioId !== 'undefined') {
+        const dadosRomaneio = dadosCompletos.find(item => 
+          (item.Romaneio && item.Romaneio.toString().toUpperCase() === romaneioId.toString().toUpperCase()) || 
+          (item.romaneio && item.romaneio.toString().toUpperCase() === romaneioId.toString().toUpperCase()) ||
+          (item.id && item.id.toString().toUpperCase() === romaneioId.toString().toUpperCase())
+        );
+        
+        if (dadosRomaneio) {
+          // Zera completamente o histórico de intercorrências na memória do cliente
+          if ('Intercorrencia' in dadosRomaneio) dadosRomaneio.Intercorrencia = "";
+          if ('intercorrencia' in dadosRomaneio) dadosRomaneio.intercorrencia = "";
+          if ('INTERCORRENCIAS' in dadosRomaneio) dadosRomaneio.INTERCORRENCIAS = "";
+        }
       }
       // =========================================================================
 
       alert("✅ Lote finalizado com sucesso!");
 
-      // Executa a esteira nativa de encerramento completa do sistema
+      // C: Executa a esteira nativa de encerramento completa do sistema
       if (typeof resetarInterface === "function") {
         resetarInterface();
       }
@@ -2145,14 +2165,6 @@ async function enviarOcorrenciaFluxo() {
       alert("❌ Erro ao finalizar lote no servidor: " + (result.error || "Tente novamente."));
     }
 
-  } catch (err) {
-    console.error("Erro no fluxo de ocorrência:", err);
-    alert("❌ Falha crítica: " + err.message);
-
-  } finally {
-    btn.disabled = false;
-    btn.innerText = "Enviar";
-  }
 }
 
 
