@@ -268,7 +268,7 @@
 
 <!-- 1. TELA DE LOGIN -->
 <div id="screen-login" class="card"> <!-- Adicionado a classe card aqui -->
-    <h3>Passagem de Carga | Conferência v1</h3>
+    <h3>Passagem de Carga | Conferência v2</h3>
     <label>E-mail</label>
     <input type="email" id="login-user" placeholder="seu@email.com">
     
@@ -1995,155 +1995,175 @@ function pularOcorrenciaEFinalizar() {
 
 
 async function enviarOcorrenciaFluxo() {
-    const motivo = document.getElementById("oc_motivo").value;
-    const descricao = document.getElementById("oc_descricao").value;
-    const tokenDev = document.getElementById("oc_token_devolucao").value;
-    const fotoInput = document.getElementById("oc_foto");
-    const btn = document.getElementById("btnEnviarOcorrenciaFinal");
+  const motivo = document.getElementById("oc_motivo").value;
+  const descricao = document.getElementById("oc_descricao").value;
+  const tokenDev = document.getElementById("oc_token_devolucao").value;
+  const fotoInput = document.getElementById("oc_foto");
+  const btn = document.getElementById("btnEnviarOcorrenciaFinal");
 
-    // 1. Validações Locais Básicas Obrigatórias (Mantidas)
-    if (!motivo) return alert("⚠️ Selecione o motivo da retenção!");
-    if (!descricao.trim()) return alert("⚠️ Digite uma descrição detalhada!");
-    if (!tokenDev.trim()) return alert("⚠️ Informe o TOKEN DE DEVOLUÇÃO!");
+  // 1. Validações Locais Básicas Obrigatórias (Mantidas originais)
+  if (!motivo) return alert("⚠️ Selecione o motivo da retenção!");
+  if (!descricao.trim()) return alert("⚠️ Digite uma descrição detalhada!");
+  if (!tokenDev.trim()) return alert("⚠️ Informe o TOKEN DE DEVOLUÇÃO!");
 
-    let temFoto = fotoInput && fotoInput.files && fotoInput.files.length > 0;
-    if (motivo === "Mercadoria Avariada" && !temFoto) {
-        return alert("⚠️ É obrigatório anexar uma foto para evidenciar a Mercadoria Avariada/Danificada!");
+  let temFoto = fotoInput && fotoInput.files && fotoInput.files.length > 0;
+  if (motivo === "Mercadoria Avariada" && !temFoto) {
+    return alert("⚠️ É obrigatório anexar uma foto para evidenciar a Mercadoria Avariada/Danificada!");
+  }
+
+  // 🔒 CAPTURA CIRÚRGICA DE SEGURANÇA: Extrai o operador selecionado no login do Front-CONF
+  // Substitua 'login-transp' pelo ID exato do seu select de transportadora se necessário
+  const selectTranspLogin = document.getElementById("login-transp") || document.querySelector("#screen-login select");
+  const operadorSessao = selectTranspLogin ? selectTranspLogin.value.toString().trim() : "";
+
+  // Trava o botão imediatamente para evitar cliques simultâneos
+  btn.disabled = true;
+  btn.innerText = "Validando Token...";
+
+  try {
+    // =========================================================================
+    // 🔒 VALIDAÇÃO DO TOKEN ADAPTADA COM FILTRO DE OPERADOR (GET)
+    // =========================================================================
+    // Injeta o parâmetro &operador= para passar pela trava de segurança do Back-GS
+    const urlValidacao = `${urlSheets}?action=consultarTokensRomaneio&romaneio=${encodeURIComponent(romaneioSendoFinalizado)}&operador=${encodeURIComponent(operadorSessao)}`;
+    
+    const resValidacao = await fetch(urlValidacao);
+    const dataValidacao = await resValidacao.json();
+
+    if (!dataValidacao || !dataValidacao.success) {
+      alert("❌ Erro ao acessar validação no servidor: " + (dataValidacao ? dataValidacao.error : "Sem resposta"));
+      btn.disabled = false;
+      btn.innerText = "Enviar";
+      return; // CORTA A EXECUÇÃO IMEDIATAMENTE
     }
 
-    // Trava o botão imediatamente para evitar cliques simultâneos
-    btn.disabled = true;
-    btn.innerText = "Validando Token...";
+    const tokenServidor = (dataValidacao.token2 || "").toString().trim();
+    const tokenDigitadoLimpo = tokenDev.trim();
 
-    try {
-        // 🚨 VALIDAÇÃO DO TOKEN NO SERVIDOR (GET)
-        const urlValidacao = `${urlSheets}?action=consultarTokensRomaneio&romaneio=${encodeURIComponent(romaneioSendoFinalizado)}`;
-        const resValidacao = await fetch(urlValidacao);
-        const dataValidacao = await resValidacao.json();
+    // Confronto direto e estrito do Token de Devolução
+    if (tokenServidor === "" || tokenDigitadoLimpo !== tokenServidor) {
+      alert("❌ Erro: O Token de Devolução informado é inválido para este Romaneio.");
+      btn.disabled = false;
+      btn.innerText = "Enviar";
+      return; // CORTA A EXECUÇÃO IMEDIATAMENTE E IMPEDE O POST
+    }
 
-        if (!dataValidacao || !dataValidacao.success) {
-            alert("⚠️ Erro ao acessar validação no servidor: " + (dataValidacao ? dataValidacao.error : "Sem resposta"));
-            btn.disabled = false;
-            btn.innerText = "Enviar";
-            return; // 🛑 CORTA A EXECUÇÃO IMEDIATAMENTE
-        }
+    // =========================================================================
+    // ✅ ADIÇÃO CIRÚRGICA: CAPTURA E ESTRUTURAÇÃO DOS ITENS SELECIONADOS
+    // =========================================================================
+    const checkboxes = document.querySelectorAll('input[name="oc_itens_selecionados"]:checked');
+    let itensTextoFormatado = "";
+    const listaCodigos = []; 
 
-        const tokenServidor = (dataValidacao.token2 || "").toString().trim();
-        const tokenDigitadoLimpo = tokenDev.trim();
+    if (checkboxes.length > 0) {
+      checkboxes.forEach(cb => {
+        if(cb.value) listaCodigos.push(cb.value.toString().trim());
+      });
+      itensTextoFormatado = "\n[Itens afetados: " + listaCodigos.join(", ") + "]";
+    }
 
-        // Confronto direto e estrito do Token de Devolução
-        if (tokenServidor === "" || tokenDigitadoLimpo !== tokenServidor) {
-            alert("❌ Erro: O Token de Devolução informado é inválido para este Romaneio.");
-            btn.disabled = false;
-            btn.innerText = "Enviar";
-            return; // 🛑 CORTA A EXECUÇÃO IMEDIATAMENTE E IMPEDE O POST
-        }
+    const descricaoFinalComItens = descricao.trim() + itensTextoFormatado;
 
-        // =========================================================================
-        // ✅ ADIÇÃO CIRÚRGICA: CAPTURA E ESTRUTURAÇÃO DOS ITENS SELECIONADOS
-        // =========================================================================
-        // =========================================================================
-        // ✅ CAPTURA E ESTRUTURAÇÃO DOS ITENS SELECIONADOS
-        // =========================================================================
-        const checkboxes = document.querySelectorAll('input[name="oc_itens_selecionados"]:checked');
-        let itensTextoFormatado = "";
-        const listaCodigos = []; 
-        
-        if (checkboxes.length > 0) {
-            checkboxes.forEach(cb => {
-                // Garante que o valor seja empurrado como string limpa
-                if(cb.value) listaCodigos.push(cb.value.toString().trim());
-            });
-            itensTextoFormatado = "\n[Itens afetados: " + listaCodigos.join(", ") + "]";
-        }
-        
-        const descricaoFinalComItens = descricao.trim() + itensTextoFormatado;
-        // =========================================================================
+    // TOKEN APROVADO! SE CHEGOU AQUI, O TOKEN É VÁLIDO.
+    btn.innerText = "Processando arquivo...";
 
-        // =========================================================================
+    let fotoBase64 = "";
+    let fotoNome = "";
 
-        // ✅ TOKEN APROVADO! SE CHEGOU AQUI, O TOKEN É VÁLIDO.
-        btn.innerText = "Processando arquivo...";
-        let fotoBase64 = "";
-        let fotoNome = "";
+    // Converte o arquivo de imagem para string Base64 limpa
+    if (temFoto) {
+      const arquivo = fotoInput.files[0];
+      fotoNome = arquivo.name;
+      fotoBase64 = await new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        // Index [1] isola a string Base64 pura descartando metadados de cabeçalho MIME
+        reader.onload = () => resolve(reader.result.split(',')[1]);
+        reader.onerror = error => reject(error);
+        reader.readAsDataURL(arquivo);
+      });
+    }
 
-        // Converte o arquivo de imagem para string Base64
-        if (temFoto) {
-            const arquivo = fotoInput.files[0];
-            fotoNome = arquivo.name;
-            fotoBase64 = await new Promise((resolve, reject) => {
-                const reader = new FileReader();
-                reader.onload = () => resolve(reader.result.split(',')[1]);
-                reader.onerror = error => reject(error);
-                reader.readAsDataURL(arquivo);
-            });
-        }
+    btn.innerText = "Gravando...";
 
-        btn.innerText = "Gravando...";
+    // payload estruturado para a action de salvamento final
+    const payloadOcorrencia = {
+      action: "atualizarObsExtra",
+      romaneio: romaneioSendoFinalizado,
+      operador: operadorSessao, // 🔒 ADICIONADO: Envia o operador para auditoria no POST
+      oc_motivo: motivo,
+      oc_descricao: descricaoFinalComItens, 
+      oc_token: tokenDigitadoLimpo,
+      oc_foto_data: fotoBase64, 
+      oc_foto_nome: fotoNome,
+      oc_itens_remover: listaCodigos 
+    };
 
-        const payloadOcorrencia = {
-            action: "atualizarObsExtra",
-            romaneio: romaneioSendoFinalizado,
-            oc_motivo: motivo,
-            oc_descricao: descricaoFinalComItens, // Envia a descrição contendo os códigos acoplados
-            oc_token: tokenDigitadoLimpo,
-            oc_foto_data: fotoBase64,  
-            oc_foto_nome: fotoNome,
-            oc_itens_remover: listaCodigos // 🌟 PROPRIEDADE ENVIADA PARA REMOVER LINHAS NO SHEETS
-        };
+    // =========================================================================
+    // 🚀 ENVIO FINAL DA OCORRÊNCIA ADAPTADO PARA x-www-form-urlencoded
+    // =========================================================================
+    // Modificado para usar URLSearchParams, garantindo compatibilidade com o e.parameter do Back-GS
+    const corpoForm = new URLSearchParams();
+    Object.keys(payloadOcorrencia).forEach(key => {
+      if (key === "oc_itens_remover") {
+        corpoForm.append(key, JSON.stringify(payloadOcorrencia[key]));
+      } else {
+        corpoForm.append(key, payloadOcorrencia[key]);
+      }
+    });
 
-        // Envia os dados finais via POST apenas após todas as validações aprovadas
-        const response = await fetch(urlSheets, {
-            method: 'POST',
-            body: JSON.stringify(payloadOcorrencia)
+    const response = await fetch(urlSheets, {
+      method: 'POST',
+      body: corpoForm,
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' }
+    });
+
+    const result = await response.json();
+    
+    if (result.success) {
+      document.getElementById("screenOcorrenciaLote").style.display = "none";
+      document.getElementById("screenOcorrenciaLote").classList.add("hidden");
+
+      // LIMPEZA DO PREVIEW
+      const imgPreview = document.getElementById('oc_foto_preview');
+      if (imgPreview) {
+        imgPreview.style.display = 'none';
+        imgPreview.src = '';
+      }
+
+      // 1. Limpa o cache local agora que o processo fechou 100% com sucesso
+      if (typeof dadosCompletos !== 'undefined' && typeof romaneioSendoFinalizado !== 'undefined') {
+        dadosCompletos = dadosCompletos.filter(r => r.Romaneio !== romaneioSendoFinalizado && r.romaneio !== romaneioSendoFinalizado && r.id !== romaneioSendoFinalizado);
+      }
+
+      // 2. Reconstrói o combobox limpando a opção usada
+      const select = document.getElementById("romaneio");
+      if (select && typeof dadosCompletos !== 'undefined') {
+        const ativos = dadosCompletos.filter(r => {
+          const txt = (r.Intercorrencia || r.intercorrencia || "").toUpperCase().trim();
+          return txt === "" || !txt.includes("CONCLUÍDO");
         });
-        
-        const result = await response.json();
+        select.innerHTML = '<option value="">Selecione o Romaneio</option>';
+        ativos.forEach(info => {
+          const nome = info.Romaneio || info.romaneio;
+          select.add(new Option(nome, nome));
+        });
+      }
 
-        if (result.success) {
-            document.getElementById("screenOcorrenciaLote").style.display = "none";
-            document.getElementById("screenOcorrenciaLote").classList.add("hidden");
-            
-            // LIMPEZA DO PREVIEW ADICIONADA ANTERIORMENTE
-            const imgPreview = document.getElementById('oc_foto_preview');
-            if (imgPreview) {
-                imgPreview.style.display = 'none';
-                imgPreview.src = '';
-            }
-
-            // 1. Limpa o cache local agora que o processo fechou 100% com sucesso
-            if (typeof dadosCompletos !== 'undefined' && typeof romaneioSendoFinalizado !== 'undefined') {
-                dadosCompletos = dadosCompletos.filter(r => r.Romaneio !== romaneioSendoFinalizado && r.romaneio !== romaneioSendoFinalizado && r.id !== romaneioSendoFinalizado);
-            }
-            
-            // 2. Reconstrói o combobox limpando a opção usada
-            const select = document.getElementById("romaneio");
-            if (select && typeof dadosCompletos !== 'undefined') {
-                const ativos = dadosCompletos.filter(r => {
-                    const txt = (r.Intercorrencia || r.intercorrencia || "").toUpperCase().trim();
-                    return txt === "" || !txt.includes("CONCLUÍDO");
-                });
-                select.innerHTML = '<option value="">Selecione o Romaneio</option>';
-                ativos.forEach(info => {
-                    const nome = info.Romaneio || info.romaneio;
-                    select.add(new Option(nome, nome));
-                });
-            }
-            
-            alert("Ocorrência registrada e Lote finalizado com sucesso!");
-            resetarInterface();
-        } else {
-            alert("⚠️ Erro ao salvar a ocorrência no servidor: " + (result.error || "Tente novamente."));
-        }
-
-    } catch (err) {
-        console.error("Erro no fluxo de ocorrência:", err);
-        alert("⚠️ Falha crítica: " + err.message);
-    } finally {
-        btn.disabled = false;
-        btn.innerText = "Enviar";
+      alert("✅ Ocorrência registrada e Lote finalizado com sucesso!");
+      if (typeof resetarInterface === "function") resetarInterface();
+      
+    } else {
+      alert("❌ Erro ao salvar a ocorrência no servidor: " + (result.error || "Tente novamente."));
     }
+  } catch (err) {
+    console.error("Erro no fluxo de ocorrência:", err);
+    alert("❌ Falha crítica: " + err.message);
+  } finally {
+    btn.disabled = false;
+    btn.innerText = "Enviar";
+  }
 }
+
 
 
 
