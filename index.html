@@ -282,7 +282,7 @@
 
 <!-- 1. TELA DE LOGIN -->
 <div id="screen-login" class="card"> <!-- Adicionado a classe card aqui -->
-    <h3>Passagem de Carga | Conferência v18</h3>
+    <h3>Passagem de Carga | Conferência v19</h3>
     <label>E-mail</label>
     <input type="email" id="login-user" placeholder="seu@email.com">
     
@@ -1727,9 +1727,8 @@ async function registrarIntercorrencia() {
 // Função essencial para permitir o próximo romaneio sem recarregar a página
 function resetarInterface() {
     const screen = document.getElementById("screen-main");
-    if (!screen) return;
 
-      // =========================================================================
+    // =========================================================================
   // 💣 HARD CLEAN SUPREMO: ZERA TODA A MEMÓRIA E CACHE NO FIM DO CICLO DO LOTE
   // =========================================================================
   // 1. Zera a variável global mestre de intercorrências para o próximo romaneio
@@ -1753,6 +1752,8 @@ function resetarInterface() {
       console.log("✓ [RESET GLOBAL] Cache interno de INTERCORRENCIAS zerado para o próximo ciclo.");
     }
   }
+    
+    if (!screen) return;
     
     // 1. Limpa os inputs e campos de texto (preservando o usuário logado)
     screen.querySelectorAll('input, select, textarea').forEach(el => {
