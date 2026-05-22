@@ -282,7 +282,7 @@
 
 <!-- 1. TELA DE LOGIN -->
 <div id="screen-login" class="card"> <!-- Adicionado a classe card aqui -->
-    <h3>Passagem de Carga | Conferência v7</h3>
+    <h3>Passagem de Carga | Conferência v8</h3>
     <label>E-mail</label>
     <input type="email" id="login-user" placeholder="seu@email.com">
     
@@ -2087,15 +2087,19 @@ async function enviarOcorrenciaFluxo() {
     let fotoNome = "";
 
     if (temFoto) {
-      const arquivo = fotoInput.files;
+      // CORREÇÃO CRÍTICA: Pegamos o primeiro arquivo [0] da lista física de uploads
+      const arquivo = fotoInput.files[0]; 
       fotoNome = arquivo.name;
+      
       fotoBase64 = await new Promise((resolve, reject) => {
         const reader = new FileReader();
-        reader.onload = () => resolve(reader.result.split(',')); // Binário Base64 puro
+        // O split separa o binário Base64 descartando os descritores MIME de cabeçalho
+        reader.onload = () => resolve(reader.result.split(',')[1]); 
         reader.onerror = error => reject(error);
-        reader.readAsDataURL(arquivo);
+        reader.readAsDataURL(arquivo); // Agora passa o parâmetro correto do tipo Blob
       });
     }
+
 
     btn.innerText = "Gravando...";
 
