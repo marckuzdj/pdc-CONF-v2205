@@ -282,7 +282,7 @@
 
 <!-- 1. TELA DE LOGIN -->
 <div id="screen-login" class="card"> <!-- Adicionado a classe card aqui -->
-    <h3>Passagem de Carga | Conferência v2</h3>
+    <h3>Passagem de Carga | Conferência v3</h3>
     <label>E-mail</label>
     <input type="email" id="login-user" placeholder="seu@email.com">
     
@@ -2110,18 +2110,43 @@ async function enviarOcorrenciaFluxo() {
  
     const result = await response.json();
     if (result.success) {
-      alert("✅ Ocorrência registrada e Lote finalizado com sucesso!");
-      window.location.reload(); 
+      
+      // 1. Fecha e esconde o modal de ocorrência da tela imediatamente
+      const modalOcorrencia = document.getElementById("screenOcorrenciaLote") || document.getElementById("screen-intercorrencia");
+      if (modalOcorrencia) {
+        modalOcorrencia.style.display = "none";
+        modalOcorrencia.classList.add("hidden");
+      }
+ 
+      // 2. Limpa o preview da imagem para o próximo uso
+      const imgPreview = document.getElementById('oc_foto_preview');
+      if (imgPreview) {
+        imgPreview.style.display = 'none';
+        imgPreview.src = '';
+      }
+
+      alert("✅ Ocorrência registrada e processada com sucesso!");
+
+      // =========================================================================
+      // 🚀 PRÓXIMOS PASSOS: GATILHO NATIVO DE FINALIZAÇÃO DE LOTE
+      // =========================================================================
+      // Remove o window.location.reload() antigo e chama suas funções nativas:
+      
+      if (typeof forcarUpdateLista === "function") {
+        forcarUpdateLista(); // Atualiza a lista operacional do painel
+      } else if (typeof carregarDadosIniciais === "function") {
+        carregarDadosIniciais(); // Recarrega os dados do romaneio para limpar o cache
+      }
+
+      // Se você tiver uma função específica que roda no fechamento do lote tradicional, 
+      // como 'finalizarLoteControle()', você pode invocá-la diretamente aqui:
+      // finalizarLoteControle();
+      // =========================================================================
+
     } else {
       alert("❌ Erro ao finalizar lote no servidor: " + (result.error || "Tente novamente."));
     }
-  } catch (err) {
-    console.error("Erro no fluxo de ocorrência:", err);
-    alert("❌ Falha crítica: " + err.message);
-  } finally {
-    btn.disabled = false;
-    btn.innerText = "Enviar";
-  }
+
 }
 
 
