@@ -282,7 +282,7 @@
 
 <!-- 1. TELA DE LOGIN -->
 <div id="screen-login" class="card"> <!-- Adicionado a classe card aqui -->
-    <h3>Passagem de Carga | Conferência v6</h3>
+    <h3>Passagem de Carga | Conferência v7</h3>
     <label>E-mail</label>
     <input type="email" id="login-user" placeholder="seu@email.com">
     
@@ -805,6 +805,15 @@ async function realizarLogin() {
             if (typeof tocarBeep === 'function') tocarBeep('sucesso');
             alert("✅ Bem-vindo(a), " + data.nome);
             
+            // =================================================================
+            // 🔒 ADIÇÃO CIRÚRGICA: PERSISTE O OPERADOR SELECIONADO NA MEMÓRIA LOCAL
+            // =================================================================
+            const selectTransp = document.getElementById("login-transp");
+            if (selectTransp) {
+                localStorage.setItem("operadorSessaoAtiva", selectTransp.value.toString().trim());
+            }
+            // =================================================================
+
             // -----------------------------------------------------------------
             // INJEÇÃO CIRÚRGICA: DETECÇÃO DO HARDWARE LOGO APÓS O LOGIN BEM-SUCEDIDO
             // -----------------------------------------------------------------
@@ -843,6 +852,7 @@ async function realizarLogin() {
         if (typeof enviandoDados !== 'undefined') enviandoDados = false;
     }
 }
+
 
 
 
@@ -2015,7 +2025,7 @@ async function enviarOcorrenciaFluxo() {
   const fotoInput = document.getElementById("oc_foto");
   const btn = document.getElementById("btnEnviarOcorrenciaFinal");
 
-  // 1. Validações Locais Básicas Obrigatórias
+  // 1. Validações Locais Básicas Obrigatórias (Originais)
   if (!motivo) return alert("⚠️ Selecione o motivo da retenção!");
   if (!descricao.trim()) return alert("⚠️ Digite uma descrição detalhada!");
   if (!tokenDev.trim()) return alert("⚠️ Informe o TOKEN DE DEVOLUÇÃO!");
@@ -2025,105 +2035,69 @@ async function enviarOcorrenciaFluxo() {
     return alert("⚠️ É obrigatório anexar uma foto para evidenciar a Mercadoria Avariada/Danificada!");
   }
 
-  // =========================================================================
-  // 🔍 LEITURA DIRETA DO ROMANEIO ATIVO NA TELA (MÉTODO ULTRA SEGURO)
-  // =========================================================================
+  // 🔍 LEITURA DIRETA DO ROMANEIO ATIVO NA TELA DO FRONT-CONF
   let romaneioId = "";
   const elementoRomaneio = document.getElementById("romaneio") || document.getElementById("select-romaneio");
-  
   if (elementoRomaneio && elementoRomaneio.value) {
     romaneioId = elementoRomaneio.value.toString().trim().toUpperCase();
   }
-  
-  // Se a variável global ainda for necessária como fallback:
   if (!romaneioId && typeof romaneioSendoFinalizado !== "undefined") {
     romaneioId = romaneioSendoFinalizado.toString().trim().toUpperCase();
   }
 
-  // =========================================================================
-  // 🔒 LEITURA DIRETA DO OPERADOR SELECIONADO NO LOGIN (MÉTODO ULTRA SEGURO)
-  // =========================================================================
-  let operadorSessao = "";
-  const elementoOperador = document.getElementById("login-transp") || document.getElementById("loginTransp") || document.querySelector("select");
-  
-  if (elementoOperador && elementoOperador.value) {
-    operadorSessao = elementoOperador.value.toString().trim();
-  }
-  
-  // Fallbacks para variáveis globais se o formulário de login foi destruído da árvore HTML
-  if (!operadorSessao && typeof transportadoraLogada !== "undefined") {
-    operadorSessao = transportadoraLogada;
-  }
-  if (!operadorSessao && typeof usuarioLogado !== "undefined") {
-    operadorSessao = usuarioLogado; 
-  }
-
-  // Se mesmo com os fallbacks o operador não for achado, avisa o usuário para debugar
+  // 🔒 EXTRAÇÃO BLINDADA DO OPERADOR LOGADO NA TELA DE LOGIN VIA LOCALSTORAGE
+  let operadorSessao = localStorage.getItem("operadorSessaoAtiva") || "";
   if (!operadorSessao) {
-    btn.disabled = false;
-    btn.innerText = "Enviar";
-    return alert("⚠️ Falha local: Não foi possível identificar o seu Operador Logístico logado. Recarregue a página.");
+    const elementoOperador = document.getElementById("login-transp") || document.getElementById("loginTransp") || document.querySelector("select");
+    if (elementoOperador && elementoOperador.value) {
+      operadorSessao = elementoOperador.value.toString().trim();
+      localStorage.setItem("operadorSessaoAtiva", operadorSessao);
+    }
   }
-  // =========================================================================
 
-  // Trava o botão imediatamente para evitar cliques simultâneos
   btn.disabled = true;
   btn.innerText = "Validando Token...";
 
   try {
-    // 🔒 VALIDAÇÃO DO TOKEN NO SERVIDOR (GET) - Passando os parâmetros diretos e higienizados
+    // 🔒 PASSO 1: CONSULTA DE VALIDAÇÃO DO TOKEN (GET) PASSANDO O OPERADOR ATIVO
     const urlValidacao = `${urlSheets}?action=consultarTokensRomaneio&romaneio=${encodeURIComponent(romaneioId)}&operador=${encodeURIComponent(operadorSessao)}`;
     
-    console.log("🚀 URL de Validação Enviada:", urlValidacao);
-
     const resValidacao = await fetch(urlValidacao);
     const dataValidacao = await resValidacao.json();
 
     if (!dataValidacao || !dataValidacao.success) {
-      alert("❌ Erro ao acessar validação no servidor: " + (dataValidacao ? dataValidacao.error : "Sem resposta"));
-      btn.disabled = false;
-      btn.innerText = "Enviar";
+      alert("❌ Erro ao acessar validação no servidor:\n\n" + (dataValidacao ? dataValidacao.error : "Sem resposta"));
       return; 
     }
 
-    // Busca o Token 2 que o servidor gerou anteriormente na aba ROMANEIOS
     const tokenServidor = (dataValidacao.token2 || "").toString().trim();
     const tokenDigitadoLimpo = tokenDev.trim();
 
-    // Confronto direto e estrito do Token de Devolução
     if (tokenServidor === "" || tokenDigitadoLimpo !== tokenServidor) {
       alert("❌ Erro: O Token de Devolução informado é inválido para este Romaneio.");
-      btn.disabled = false;
-      btn.innerText = "Enviar";
       return; 
     }
 
-    // ✅ CAPTURA E ESTRUTURAÇÃO DOS ITENS SELECIONADOS
-    const checkboxes = document.querySelectorAll('input[name="oc_itens_selecionados"]:checked');
-    let itensTextoFormatado = "";
+    // Coleta os códigos de pedidos selecionados no painel multi-select para exclusão reversa
+    const checkboxes = document.querySelectorAll('input[name="oc_itens_selecionados"]:checked, input[name="adm_itens_selecionados"]:checked');
     const listaCodigos = []; 
- 
     if (checkboxes.length > 0) {
       checkboxes.forEach(cb => {
         if(cb.value) listaCodigos.push(cb.value.toString().trim());
       });
-      itensTextoFormatado = "\n[Itens afetados: " + listaCodigos.join(", ") + "]";
     }
  
-    const descricaoFinalComItens = descricao.trim() + itensTextoFormatado;
- 
     btn.innerText = "Processando arquivo...";
-
     let fotoBase64 = "";
     let fotoNome = "";
 
-    // Converte o arquivo de imagem para string Base64
     if (temFoto) {
       const arquivo = fotoInput.files[0];
       fotoNome = arquivo.name;
       fotoBase64 = await new Promise((resolve, reject) => {
         const reader = new FileReader();
-        reader.onload = () => resolve(reader.result.split(',')[1]); // Pega estritamente a parte binária
+        // O split separa o binário Base64 puro descartando descritores de metadados MIME
+        reader.onload = () => resolve(reader.result.split(',')[1]); 
         reader.onerror = error => reject(error);
         reader.readAsDataURL(arquivo);
       });
@@ -2131,25 +2105,25 @@ async function enviarOcorrenciaFluxo() {
 
     btn.innerText = "Gravando...";
 
-    // Monta o payload completo estruturado para o POST
+    // Montagem do payload completo estruturado para a action de salvamento final
     const payloadOcorrencia = {
       action: "atualizarObsExtra",
       romaneio: romaneioId,
-      operador: operadorSessao, 
+      operador: operadorSessao, // Injeção mandatória para o doPost(e) do Back-GS
       oc_motivo: motivo,
-      oc_descricao: descricaoFinalComItens, 
+      oc_descricao: descricao.trim(), 
       oc_token: tokenDigitadoLimpo,
       oc_foto_data: fotoBase64, 
       oc_foto_nome: fotoNome,
-      oc_itens_remover: JSON.stringify(listaCodigos)
+      oc_itens_remover: JSON.stringify(listaCodigos) // Preserva o envio do array para remoção reversa
     };
 
-    // Envia os dados estruturados via POST clássico
     const corpoFormulario = new URLSearchParams();
     Object.keys(payloadOcorrencia).forEach(key => {
       corpoFormulario.append(key, payloadOcorrencia[key]);
     });
 
+    // 🚀 DISPARO FINAL VIA POST MULTIPART COMPATÍVEL COM e.parameter
     const response = await fetch(urlSheets, {
       method: 'POST',
       body: corpoFormulario,
@@ -2158,23 +2132,12 @@ async function enviarOcorrenciaFluxo() {
  
     const result = await response.json();
     if (result.success) {
-      document.getElementById("screenOcorrenciaLote").style.display = "none";
-      document.getElementById("screenOcorrenciaLote").classList.add("hidden");
- 
-      const imgPreview = document.getElementById('oc_foto_preview');
-      if (imgPreview) {
-        imgPreview.style.display = 'none';
-        imgPreview.src = '';
-      }
-
-      alert("✅ Ocorrência registrada e Lote finalizado com sucesso!");
+      alert("✅ Sucesso! Ocorrência registrada e lote finalizado com sucesso!");
       window.location.reload(); 
-
     } else {
       alert("❌ Erro ao salvar a ocorrência no servidor: " + (result.error || "Tente novamente."));
     }
   } catch (err) {
-    // CORREÇÃO: Mantido apenas um único bloco catch limpo e padronizado
     console.error("Erro no fluxo de ocorrência:", err);
     alert("❌ Falha crítica: " + err.message);
   } finally {
@@ -2182,6 +2145,7 @@ async function enviarOcorrenciaFluxo() {
     btn.innerText = "Enviar";
   }
 }
+
 
 
 
