@@ -282,7 +282,7 @@
 
 <!-- 1. TELA DE LOGIN -->
 <div id="screen-login" class="card"> <!-- Adicionado a classe card aqui -->
-    <h3>Passagem de Carga | Conferência v19</h3>
+    <h3>Passagem de Carga | Conferência v20</h3>
     <label>E-mail</label>
     <input type="email" id="login-user" placeholder="seu@email.com">
     
@@ -1726,9 +1726,7 @@ async function registrarIntercorrencia() {
 
 // Função essencial para permitir o próximo romaneio sem recarregar a página
 function resetarInterface() {
-    const screen = document.getElementById("screen-main");
-
-    // =========================================================================
+      // =========================================================================
   // 💣 HARD CLEAN SUPREMO: ZERA TODA A MEMÓRIA E CACHE NO FIM DO CICLO DO LOTE
   // =========================================================================
   // 1. Zera a variável global mestre de intercorrências para o próximo romaneio
@@ -1737,22 +1735,30 @@ function resetarInterface() {
     console.log("✓ [RESET GLOBAL] Variável intercorrenciaFinal limpa com sucesso.");
   }
 
-  // 2. Limpa completamente o cache de ocorrências do romaneio antigo na memória da página
-  if (typeof dadosCompletos !== 'undefined' && dadosCompletos.length > 0 && typeof romaneioSendoFinalizado !== 'undefined') {
+  // 2. Limpa completamente o cache de ocorrências do romaneio antigo no array dadosCompletos
+  // NOTA: Caso a variável local seja 'romaneioId' ou 'romaneioSendoFinalizado', mapeamos ambas para segurança
+  let idRomAtivo = "";
+  if (typeof romaneioSendoFinalizado !== "undefined") idRomAtivo = romaneioSendoFinalizado;
+  if (!idRomAtivo && typeof romaneioId !== "undefined") idRomAtivo = romaneioId;
+
+  if (typeof dadosCompletos !== 'undefined' && dadosCompletos.length > 0 && idRomAtivo !== "") {
     const dadosRomaneio = dadosCompletos.find(function(item) {
-      return (item.Romaneio && item.Romaneio.toString().toUpperCase() === romaneioSendoFinalizado.toString().toUpperCase()) || 
-             (item.romaneio && item.romaneio.toString().toUpperCase() === romaneioSendoFinalizado.toString().toUpperCase()) ||
-             (item.id && item.id.toString().toUpperCase() === romaneioSendoFinalizado.toString().toUpperCase());
+      return (item.Romaneio && item.Romaneio.toString().toUpperCase() === idRomAtivo.toString().toUpperCase()) || 
+             (item.romaneio && item.romaneio.toString().toUpperCase() === idRomAtivo.toString().toUpperCase()) ||
+             (item.id && item.id.toString().toUpperCase() === idRomAtivo.toString().toUpperCase());
     });
     
     if (dadosRomaneio) {
-      if ('Intercorrencia' in dadosRomaneio) dadosRomaneio.Intercorrencia = "";
-      if ('intercorrencia' in dadosRomaneio) dadosRomaneio.intercorrencia = "";
-      if ('INTERCORRENCIAS' in dadosRomaneio) dadosRomaneio.INTERCORRENCIAS = "";
-      console.log("✓ [RESET GLOBAL] Cache interno de INTERCORRENCIAS zerado para o próximo ciclo.");
+      // Força a limpeza absoluta de todas as chaves possíveis em memória (Maiúsculas e Minúsculas)
+      dadosRomaneio.INTERCORRENCIAS = "";
+      dadosRomaneio.Intercorrencia = "";
+      dadosRomaneio.intercorrencia = "";
+      dadosRomaneio.OBS = "";
+      dadosRomaneio.obs = "";
+      console.log("✓ [RESET GLOBAL] Histórico de cache deletado em definitivo.");
     }
   }
-    
+    const screen = document.getElementById("screen-main");   
     if (!screen) return;
     
     // 1. Limpa os inputs e campos de texto (preservando o usuário logado)
