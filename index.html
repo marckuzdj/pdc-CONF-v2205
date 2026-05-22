@@ -282,7 +282,7 @@
 
 <!-- 1. TELA DE LOGIN -->
 <div id="screen-login" class="card"> <!-- Adicionado a classe card aqui -->
-    <h3>Passagem de Carga | Conferência v16</h3>
+    <h3>Passagem de Carga | Conferência v17</h3>
     <label>E-mail</label>
     <input type="email" id="login-user" placeholder="seu@email.com">
     
@@ -2112,6 +2112,7 @@ async function enviarOcorrenciaFluxo() {
       corpoFormulario.append(key, payloadOcorrencia[key]);
     });
 
+    // 🚀 DISPARO ASSÍNCRONO POST DIRECIONADO PARA O FLOW EXCLUSIVO DO BACK-GS
     const response = await fetch(urlSheets, {
       method: 'POST',
       body: corpoFormulario,
@@ -2128,25 +2129,22 @@ async function enviarOcorrenciaFluxo() {
         modalOcorrencia.classList.add("hidden");
       }
  
-      // B: Executa a limpeza física de todos os inputs da tela
+      // B: Executa a limpeza física de todos os inputs da tela através da sua esteira homologada
       if (typeof cancelarOcorrenciaEVoltar === "function") {
         cancelarOcorrenciaEVoltar();
       }
 
       // =========================================================================
-      // 💣 NOVO: HARD CLEAN DO CACHE DO ARRAY DA PÁGINA (DADOSCOMPLETOS)
+      // 💣 HARD CLEAN DO CACHE INTERNO (DADOSCOMPLETOS) - SEM ERROS DE CHAVES
       // =========================================================================
-      // Remove o histórico antigo da memória da página para que o botão 'Não'
-      // detecte que a linha agora está livre, gravando apenas o texto padrão.
       if (typeof dadosCompletos !== 'undefined' && dadosCompletos.length > 0 && typeof romaneioId !== 'undefined') {
-        const dadosRomaneio = dadosCompletos.find(item => 
-          (item.Romaneio && item.Romaneio.toString().toUpperCase() === romaneioId.toString().toUpperCase()) || 
-          (item.romaneio && item.romaneio.toString().toUpperCase() === romaneioId.toString().toUpperCase()) ||
-          (item.id && item.id.toString().toUpperCase() === romaneioId.toString().toUpperCase())
-        );
+        const dadosRomaneio = dadosCompletos.find(function(item) {
+          return (item.Romaneio && item.Romaneio.toString().toUpperCase() === romaneioId.toString().toUpperCase()) || 
+                 (item.romaneio && item.romaneio.toString().toUpperCase() === romaneioId.toString().toUpperCase()) ||
+                 (item.id && item.id.toString().toUpperCase() === romaneioId.toString().toUpperCase());
+        });
         
         if (dadosRomaneio) {
-          // Zera completamente o histórico de intercorrências na memória do cliente
           if ('Intercorrencia' in dadosRomaneio) dadosRomaneio.Intercorrencia = "";
           if ('intercorrencia' in dadosRomaneio) dadosRomaneio.intercorrencia = "";
           if ('INTERCORRENCIAS' in dadosRomaneio) dadosRomaneio.INTERCORRENCIAS = "";
@@ -2165,7 +2163,18 @@ async function enviarOcorrenciaFluxo() {
       alert("❌ Erro ao finalizar lote no servidor: " + (result.error || "Tente novamente."));
     }
 
+  } catch (err) {
+    // 🔒 FECHAMENTO MANDATÓRIO DO BLOCO TRY MESTRE DA FUNÇÃO
+    console.error("Erro no fluxo de ocorrência:", err);
+    alert("❌ Falha crítica: " + err.message);
+
+  } finally {
+    // 🔄 REATIVA O BOTÃO GARANTIDO EM QUALQUER CENÁRIO DE CONEXÃO
+    btn.disabled = false;
+    btn.innerText = "Enviar";
+  }
 }
+
 
 
 
