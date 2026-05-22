@@ -282,7 +282,7 @@
 
 <!-- 1. TELA DE LOGIN -->
 <div id="screen-login" class="card"> <!-- Adicionado a classe card aqui -->
-    <h3>Passagem de Carga | Conferência v5</h3>
+    <h3>Passagem de Carga | Conferência v6</h3>
     <label>E-mail</label>
     <input type="email" id="login-user" placeholder="seu@email.com">
     
@@ -2125,14 +2125,14 @@ async function enviarOcorrenciaFluxo() {
       headers: { 'Content-Type': 'application/x-www-form-urlencoded' }
     });
  
-    const result = await response.json(); //
-    if (result.success) { //
+    const result = await response.json();
+    if (result.success) {
       
-      // A: Oculta o modal de ocorrência da tela imediatamente
-      const modalOcorrencia = document.getElementById("screenOcorrenciaLote") || document.getElementById("screen-intercorrencia");
+      // A: Oculta a tela de ocorrência atual
+      const modalOcorrencia = document.getElementById("screenOcorrenciaLote");
       if (modalOcorrencia) {
         modalOcorrencia.style.display = "none";
-        modalOcorrencia.classList.add("hidden"); //
+        modalOcorrencia.classList.add("hidden");
       }
  
       // B: Limpa o preview da imagem para o próximo lote
@@ -2142,20 +2142,34 @@ async function enviarOcorrenciaFluxo() {
         imgPreview.src = '';
       }
 
-      // C: Alerta de sucesso padrão do sistema
+      // =========================================================================
+      // 🧹 ADIÇÃO CIRÚRGICA: RESET COMPLETO DOS CAMPOS TEXTUAIS E SELECTS
+      // =========================================================================
+      const selectMotivo = document.getElementById("oc_motivo");
+      if (selectMotivo) selectMotivo.selectedIndex = 0;
+
+      const inputFoto = document.getElementById("oc_foto");
+      if (inputFoto) inputFoto.value = "";
+
+      const checkboxes = document.querySelectorAll('input[name="oc_itens_selecionados"], input[name="adm_itens_selecionados"]');
+      checkboxes.forEach(cb => { cb.checked = false; });
+
+      const txtDescricao = document.getElementById("oc_descricao");
+      if (txtDescricao) txtDescricao.value = "";
+
+      const txtToken = document.getElementById("oc_token_devolucao");
+      if (txtToken) txtToken.value = "";
+      // =========================================================================
+
       alert("✅ Lote finalizado com sucesso!");
 
-      // =========================================================================
-      // 🎯 AJUSTE DO GATILHO COMPORTAMENTAL: EXECUTA FILTRAGEM E RESET DE INTERFACE
-      // =========================================================================
-      // Substituído o 'window.location.reload()' pelo acionamento do reset nativo
+      // C: Executa a função nativa de encerramento completa conforme solicitado
       if (typeof resetarInterface === "function") {
         resetarInterface(); 
       }
-      // =========================================================================
 
     } else {
-      alert("❌ Erro ao finalizar lote no servidor: " + (result.error || "Tente novamente.")); //
+      alert("❌ Erro ao finalizar lote no servidor: " + (result.error || "Tente novamente."));
     }
 
   } catch (err) { //
@@ -2236,82 +2250,107 @@ function mostrarPreviewFoto(input) {
 
 
 function cancelarOcorrenciaEVoltar() {
-    // =========================================================================
-    // CORREÇÃO CRÍTICA: SEGURO CONTRA DUPLICAÇÃO DE PREFIXO NA VARIÁVEL GLOBAL
-    // =========================================================================
-    if (typeof intercorrenciaFinal !== "undefined" && intercorrenciaFinal) {
-        // Expressão regular que localiza todas as ocorrências repetidas do prefixo
-        const regexLimparPrefixo = /\s*Volumes\s+confirmados\s*\/\s*/gi;
-        
-        // Remove completamente o prefixo duplicado acumulado na variável global
-        intercorrenciaFinal = intercorrenciaFinal.replace(regexLimparPrefixo, "").trim();
-        
-        console.log("Variável global higienizada (sem duplicações):", intercorrenciaFinal);
-    }
-    // =========================================================================
+ // =========================================================================
+ // CORREÇÃO CRÍTICA: SEGURO CONTRA DUPLICAÇÃO DE PREFIXO NA VARIÁVEL GLOBAL
+ // =========================================================================
+ if (typeof intercorrenciaFinal !== "undefined" && intercorrenciaFinal) {
+ // Expressão regular que localiza todas as ocorrências repetidas do prefixo
+ const regexLimparPrefixo = /\s*Volumes\s+confirmados\s*\/\s*/gi;
+ 
+ // Remove completamente o prefixo duplicado acumulado na variável global
+ intercorrenciaFinal = intercorrenciaFinal.replace(regexLimparPrefixo, "").trim();
+ 
+ console.log("Variável global higienizada (sem duplicações):", intercorrenciaFinal);
+ }
+ 
+ // 1. Oculta la tela de ocorrência atual
+ const telaOc = document.getElementById("screenOcorrenciaLote");
+ if (telaOc) {
+ telaOc.style.display = "none";
+ telaOc.classList.add("hidden");
+ }
+ 
+ // 2. Garante que a tela principal volte a aparecer
+ const telaPrincipal = document.getElementById("screen-main");
+ if (telaPrincipal) {
+ telaPrincipal.style.display = "block";
+ telaPrincipal.classList.remove("hidden");
+ }
+ 
+ // 3. Restaura o botão original "Finalizar Lote"
+ const btnPrincipal = document.querySelector("button[onclick='finalizarLote()']") 
+|| document.getElementById("btnEnviarLote");
+ if (btnPrincipal) {
+ btnPrincipal.disabled = false;
+ btnPrincipal.innerHTML = "Finalizar Lote"; 
+ btnPrincipal.style.backgroundColor = ""; 
+ btnPrincipal.style.display = "block"; 
+ btnPrincipal.classList.remove("hidden");
+ }
 
-    // 1. Oculta a tela de ocorrência atual
-    const telaOc = document.getElementById("screenOcorrenciaLote");
-    if (telaOc) {
-        telaOc.style.display = "none";
-        telaOc.classList.add("hidden");
-    }
-    
-    // 2. Garante que a tela principal volte a aparecer
-    const telaPrincipal = document.getElementById("screen-main");
-    if (telaPrincipal) {
-        telaPrincipal.style.display = "block";
-        telaPrincipal.classList.remove("hidden");
-    }
-    
-    // 3. Restaura o botão original "Finalizar Lote"
-    const btnPrincipal = document.querySelector("button[onclick='finalizarLote()']") || document.getElementById("btnEnviarLote");
-    if (btnPrincipal) {
-        btnPrincipal.disabled = false;
-        btnPrincipal.innerHTML = "Finalizar Lote"; 
-        btnPrincipal.style.backgroundColor = "";   
-        btnPrincipal.style.display = "block";      
-        btnPrincipal.classList.remove("hidden");
-    }
+ // 4. Limpa e esconde o contêiner de assinatura
+ const canvas = document.getElementById('canvasAssinatura');
+ if (canvas) {
+ const ctx = canvas.getContext('2d');
+ if (ctx) ctx.clearRect(0, 0, canvas.width, canvas.height); 
+ }
+ 
+ // Esconde todo o bloco/container da assinatura (Card de desenho e links)
+ const areaAssinatura = document.getElementById("areaAssinatura");
+ if (areaAssinatura) {
+ areaAssinatura.style.display = "none"; 
+ areaAssinatura.classList.add("hidden");
+ areaAssinatura.style.opacity = "1";
+ areaAssinatura.style.pointerEvents = "auto";
+ }
 
-    // 4. Limpa e esconde o contêiner de assinatura
-    const canvas = document.getElementById('canvasAssinatura');
-    if (canvas) {
-        const ctx = canvas.getContext('2d');
-        if (ctx) ctx.clearRect(0, 0, canvas.width, canvas.height); 
-    }
+ // 5. Remove a string parcial do cache local da lista também por segurança
+ if (typeof dadosCompletos !== 'undefined' && dadosCompletos.length > 0) {
+ const dadosRomaneio = dadosCompletos.find(item => 
+ (item.Romaneio && item.Romaneio.toString().toUpperCase() === romaneioSendoFinalizado.toString().toUpperCase()) || 
+ (item.romaneio && item.romaneio.toString().toUpperCase() === romaneioSendoFinalizado.toString().toUpperCase()) ||
+ (item.id && item.id.toString().toUpperCase() === romaneioSendoFinalizado.toString().toUpperCase())
+ );
+ 
+ if (dadosRomaneio) {
+ let historicoObs = (dadosRomaneio.Intercorrencia || dadosRomaneio.intercorrencia || dadosRomaneio.INTERCORRENCIAS || "").toString().trim();
+ const regexLimpezaCompleta = /\s*Volumes\s+confirmados\s*\/\s*CONCLU[ÍI]DO\s*|\s*Volumes\s+confirmados\s*\/\s*/gi;
+ historicoObs = historicoObs.replace(regexLimpezaCompleta, "").trim();
+ if ('Intercorrencia' in dadosRomaneio) dadosRomaneio.Intercorrencia = historicoObs;
+ if ('intercorrencia' in dadosRomaneio) dadosRomaneio.intercorrencia = historicoObs;
+ if ('INTERCORRENCIAS' in dadosRomaneio) dadosRomaneio.INTERCORRENCIAS = historicoObs;
+ }
+ }
+ 
+ if (typeof enviandoDados !== 'undefined') enviandoDados = false;
+ console.log("Interface retrocedida e travamento de duplicação resolvido com sucesso.");
 
-    // Esconde todo o bloco/container da assinatura (Card de desenho e links)
-    const areaAssinatura = document.getElementById("areaAssinatura");
-    if (areaAssinatura) {
-        areaAssinatura.style.display = "none"; 
-        areaAssinatura.classList.add("hidden");
-        areaAssinatura.style.opacity = "1";
-        areaAssinatura.style.pointerEvents = "auto";
-    }
+ // =========================================================================
+ // 🧹 ADIÇÃO CIRÚRGICA DE ENCERRAMENTO: RESET DE TODOS OS INPUTS DO MODAL
+ // =========================================================================
+ const selectMotivo = document.getElementById("oc_motivo");
+ if (selectMotivo) selectMotivo.selectedIndex = 0;
 
-    // 5. Remove a string parcial do cache local da lista também por segurança
-    if (typeof dadosCompletos !== 'undefined' && dadosCompletos.length > 0) {
-        const dadosRomaneio = dadosCompletos.find(item => 
-            (item.Romaneio && item.Romaneio.toString().toUpperCase() === romaneioSendoFinalizado.toString().toUpperCase()) || 
-            (item.romaneio && item.romaneio.toString().toUpperCase() === romaneioSendoFinalizado.toString().toUpperCase()) ||
-            (item.id && item.id.toString().toUpperCase() === romaneioSendoFinalizado.toString().toUpperCase())
-        );
-        
-        if (dadosRomaneio) {
-            let historicoObs = (dadosRomaneio.Intercorrencia || dadosRomaneio.intercorrencia || dadosRomaneio.INTERCORRENCIAS || "").toString().trim();
-            const regexLimpezaCompleta = /\s*Volumes\s+confirmados\s*\/\s*CONCLU[ÍI]DO\s*|\s*Volumes\s+confirmados\s*\/\s*/gi;
-            historicoObs = historicoObs.replace(regexLimpezaCompleta, "").trim();
+ const inputFoto = document.getElementById("oc_foto");
+ if (inputFoto) inputFoto.value = "";
+ 
+ const imgPreview = document.getElementById('oc_foto_preview');
+ if (imgPreview) {
+ imgPreview.style.display = 'none';
+ imgPreview.src = '';
+ }
 
-            if ('Intercorrencia' in dadosRomaneio) dadosRomaneio.Intercorrencia = historicoObs;
-            if ('intercorrencia' in dadosRomaneio) dadosRomaneio.intercorrencia = historicoObs;
-            if ('INTERCORRENCIAS' in dadosRomaneio) dadosRomaneio.INTERCORRENCIAS = historicoObs;
-        }
-    }
-    
-    if (typeof enviandoDados !== 'undefined') enviandoDados = false;
-    console.log("Interface retrocedida e travamento de duplicação resolvido com sucesso.");
+ const checkboxes = document.querySelectorAll('input[name="oc_itens_selecionados"], input[name="adm_itens_selecionados"]');
+ checkboxes.forEach(cb => { cb.checked = false; });
+
+ const txtDescricao = document.getElementById("oc_descricao");
+ if (txtDescricao) txtDescricao.value = "";
+
+ const txtToken = document.getElementById("oc_token_devolucao");
+ if (txtToken) txtToken.value = "";
+ // =========================================================================
 }
+
 
 
 // Filtra dinamicamente as caixas de seleção conforme o operador digita no campo de busca
@@ -2342,6 +2381,41 @@ function filtrarItensMultiSelect() {
     }
 }
 
+/**
+ * 🧹 LIMPEZA TOTAL: Reseta todos os inputs do formulário de ocorrência
+ */
+function adm_limparCamposModalOcorrencia() {
+    // 1. Reseta o combobox do motivo para a primeira opção (default)
+    const selectMotivo = document.getElementById("oc_motivo");
+    if (selectMotivo) selectMotivo.selectedIndex = 0;
+
+    // 2. Limpa o input de arquivo de foto e o preview visual correspondente
+    const inputFoto = document.getElementById("oc_foto");
+    if (inputFoto) inputFoto.value = "";
+    
+    const imgPreview = document.getElementById('oc_foto_preview');
+    if (imgPreview) {
+        imgPreview.style.display = 'none';
+        imgPreview.src = '';
+    }
+
+    // 3. Desmarca todos os checkboxes de pedidos da lista
+    const checkboxes = document.querySelectorAll('input[name="oc_itens_selecionados"], input[name="adm_itens_selecionados"]');
+    checkboxes.forEach(cb => {
+        cb.checked = false;
+    });
+
+    // 4. Limpa o campo de pesquisa de pedidos se aplicável
+    const inputPesquisa = document.querySelector(".box-card-ocorrencia input[type='text']"); // seletor genérico do campo 'Digite para pesquisar...'
+    if (inputPesquisa && inputPesquisa.id !== "oc_token_devolucao") inputPesquisa.value = "";
+
+    // 5. Limpa a descrição detalhada e o Token de Devolução
+    const txtDescricao = document.getElementById("oc_descricao");
+    if (txtDescricao) txtDescricao.value = "";
+
+    const txtToken = document.getElementById("oc_token_devolucao");
+    if (txtToken) txtToken.value = "";
+}
 
 
     
