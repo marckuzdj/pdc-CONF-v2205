@@ -282,7 +282,7 @@
 
 <!-- 1. TELA DE LOGIN -->
 <div id="screen-login" class="card"> <!-- Adicionado a classe card aqui -->
-    <h3>Passagem de Carga | Conferência v9</h3>
+    <h3>Passagem de Carga | Conferência v10</h3>
     <label>E-mail</label>
     <input type="email" id="login-user" placeholder="seu@email.com">
     
@@ -2009,29 +2009,26 @@ function pularOcorrenciaEFinalizar() {
 
 
 async function enviarOcorrenciaFluxo() {
-  // 1. Captura limpa dos valores brutos direto dos elementos no momento exato do clique
-  const motivoVal = document.getElementById("oc_motivo").value;
+  const motivo = document.getElementById("oc_motivo").value;
   const descricaoInput = document.getElementById("oc_descricao");
   const tokenDev = document.getElementById("oc_token_devolucao").value;
   const fotoInput = document.getElementById("oc_foto");
   const btn = document.getElementById("btnEnviarOcorrenciaFinal");
 
-  // Força o isolamento do texto digitado para evitar heranças de escopo global
+  // Força o isolamento total do texto digitado para limpar caches de memória local
   const textoDigitadoUsuario = descricaoInput ? descricaoInput.value.toString().trim() : "";
 
-  // 2. Validações locais obrigatórias
-  if (!motivoVal) return alert("⚠️ Selecione o motivo da retenção!");
+  // 1. Validações Locais Básicas Obrigatórias (Originais mantidas)
+  if (!motivo) return alert("⚠️ Selecione o motivo da retenção!");
   if (!textoDigitadoUsuario) return alert("⚠️ Digite uma descrição detalhada!");
   if (!tokenDev.trim()) return alert("⚠️ Informe o TOKEN DE DEVOLUÇÃO!");
 
   let temFoto = fotoInput && fotoInput.files && fotoInput.files.length > 0;
-  if (motivoVal === "Mercadoria Avariada" && !temFoto) {
+  if (motivo === "Mercadoria Avariada" && !temFoto) {
     return alert("⚠️ É obrigatório anexar uma foto para evidenciar a Mercadoria Avariada/Danificada!");
   }
 
-  // =========================================================================
-  // 🧹 FIM DO CACHE: MONTAGEM DA STRING HORIZONTAL EXCLUSIVA POR CLIQUE
-  // =========================================================================
+  // 🔒 ADIÇÃO: Captura e concatenação horizontal obrigatória dos pedidos selecionados
   const checkboxes = document.querySelectorAll('input[name="oc_itens_selecionados"]:checked, input[name="adm_itens_selecionados"]:checked');
   
   if (checkboxes.length === 0) {
@@ -2043,12 +2040,9 @@ async function enviarOcorrenciaFluxo() {
     if(cb.value) listaCodigos.push(cb.value.toString().trim());
   });
   
-  // CORREÇÃO CRÍTICA: Criamos uma constante local e trocamos o '\n' por um separador em linha reta
+  // 🎨 SINTONIA VISUAL: Substituído o '\n' por um traço para manter a linha horizontal reta no Sheets
   const sufixoPedidosFormatado = " - [Pedidos Afetados: " + listaCodigos.join(", ") + "]";
-  
-  // String mestre final gerada do zero absoluta, sem acumular lixo anterior
   const descricaoFinalComItens = textoDigitadoUsuario + sufixoPedidosFormatado;
-  // =========================================================================
 
   // Captura direta do romaneio ativo na tela
   let romaneioId = "";
@@ -2063,7 +2057,6 @@ async function enviarOcorrenciaFluxo() {
   btn.disabled = true;
   btn.innerText = "Validando Token...";
 
-
   try {
     // DISPARO DA VALIDAÇÃO DIRETA DO TOKEN NO SERVIDOR (GET)
     const urlValidacao = `${urlSheets}?action=consultarSegurancaOcorrencia&romaneio=${encodeURIComponent(romaneioId)}`;
@@ -2076,7 +2069,6 @@ async function enviarOcorrenciaFluxo() {
       return; 
     }
 
-    // Confronta o TOKEN2 armazenado na planilha
     const tokenServidor = (dataValidacao.token2 || "").toString().trim();
     const tokenDigitadoLimpo = tokenDev.trim();
 
@@ -2090,19 +2082,15 @@ async function enviarOcorrenciaFluxo() {
     let fotoNome = "";
 
     if (temFoto) {
-      // CORREÇÃO CRÍTICA: Pegamos o primeiro arquivo [0] da lista física de uploads
-      const arquivo = fotoInput.files[0]; 
+      const arquivo = fotoInput.files[0]; // Extrai o Blob individual correto da lista física
       fotoNome = arquivo.name;
-      
       fotoBase64 = await new Promise((resolve, reject) => {
         const reader = new FileReader();
-        // O split separa o binário Base64 descartando os descritores MIME de cabeçalho
-        reader.onload = () => resolve(reader.result.split(',')[1]); 
+        reader.onload = () => resolve(reader.result.split(',')[1]); // Isola o Base64 binário puro sem MIME headers
         reader.onerror = error => reject(error);
-        reader.readAsDataURL(arquivo); // Agora passa o parâmetro correto do tipo Blob
+        reader.readAsDataURL(arquivo);
       });
     }
-
 
     btn.innerText = "Gravando...";
 
@@ -2110,12 +2098,12 @@ async function enviarOcorrenciaFluxo() {
     const payloadOcorrencia = {
       action: "salvarFluxoOcorrenciaCONF",
       romaneio: romaneioId,
-      oc_motivo: motivo,
-      oc_descricao: descricaoFinalComItens, // Injeta o texto já concatenado com os códigos
+      oc_motivo: motivo, // Sincronizado perfeitamente com a variável do topo
+      oc_descricao: descricaoFinalComItens, 
       oc_token: tokenDigitadoLimpo,
       oc_foto_data: fotoBase64, 
       oc_foto_name: fotoNome,
-      oc_itens_remover: JSON.stringify(listaCodigos) // Envia a lista para o motor de deleção por FORNEC_LAST
+      oc_itens_remover: JSON.stringify(listaCodigos) // Passa o array plano para o motor de deleção reversa
     };
 
     const corpoFormulario = new URLSearchParams();
@@ -2132,21 +2120,21 @@ async function enviarOcorrenciaFluxo() {
     const result = await response.json();
     if (result.success) {
       
-      // 1. Fecha e esconde o modal de ocorrência da tela imediatamente
-      const modalOcorrencia = document.getElementById("screenOcorrenciaLote") || document.getElementById("screen-intercorrencia");
+      // A: Oculta a tela de ocorrência atual
+      const modalOcorrencia = document.getElementById("screenOcorrenciaLote");
       if (modalOcorrencia) {
         modalOcorrencia.style.display = "none";
         modalOcorrencia.classList.add("hidden");
       }
  
-      // 2. Executa a limpeza física dos campos preservando o seu fluxo mestre
+      // B: Executa a limpeza física de todos os inputs e do preview de imagem
       if (typeof cancelarOcorrenciaEVoltar === "function") {
         cancelarOcorrenciaEVoltar();
       }
 
       alert("✅ Lote finalizado com sucesso!");
 
-      // 3. Executa estritamente a função de reset do sistema
+      // C: Executa a esteira nativa de encerramento completa do sistema
       if (typeof resetarInterface === "function") {
         resetarInterface();
       }
@@ -2164,6 +2152,7 @@ async function enviarOcorrenciaFluxo() {
     btn.innerText = "Enviar";
   }
 }
+
 
 
 
