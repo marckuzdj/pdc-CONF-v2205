@@ -282,7 +282,7 @@
 
 <!-- 1. TELA DE LOGIN -->
 <div id="screen-login" class="card"> <!-- Adicionado a classe card aqui -->
-    <h3>Passagem de Carga | Conferência v7</h3>
+    <h3>Passagem de Carga | Conferência v8</h3>
     <label>E-mail</label>
     <input type="email" id="login-user" placeholder="seu@email.com">
     
@@ -2045,15 +2045,31 @@ async function enviarOcorrenciaFluxo() {
     romaneioId = romaneioSendoFinalizado.toString().trim().toUpperCase();
   }
 
-  // 🔒 EXTRAÇÃO BLINDADA DO OPERADOR LOGADO NA TELA DE LOGIN VIA LOCALSTORAGE
+  // 🔒 SOLUÇÃO DEFINITIVA: LEITURA EM CAIXA ALTA VIA MEMÓRIA LOCAL
+  // =========================================================================
   let operadorSessao = localStorage.getItem("operadorSessaoAtiva") || "";
+  
+  // Força o valor recuperado a ficar em CAIXA ALTA para bater com o banco de dados
+  operadorSessao = operadorSessao.toString().trim().toUpperCase();
+  
+  // Fallbacks de segurança caso o LocalStorage falhe ou mude de sessão
   if (!operadorSessao) {
     const elementoOperador = document.getElementById("login-transp") || document.getElementById("loginTransp") || document.querySelector("select");
     if (elementoOperador && elementoOperador.value) {
-      operadorSessao = elementoOperador.value.toString().trim();
-      localStorage.setItem("operadorSessaoAtiva", operadorSessao);
+      operadorSessao = elementoOperador.value.toString().trim().toUpperCase();
     }
   }
+  if (!operadorSessao && typeof transportadoraLogada !== "undefined") {
+    operadorSessao = transportadoraLogada.toString().trim().toUpperCase();
+  }
+
+  // Se mesmo com os fallbacks o operador não for achado, avisa o usuário
+  if (!operadorSessao) {
+    btn.disabled = false;
+    btn.innerText = "Enviar";
+    return alert("⚠️ Falha local: Não foi possível identificar o seu Operador Logístico logado. Recarregue a página.");
+  }
+  // =========================================================================
 
   btn.disabled = true;
   btn.innerText = "Validando Token...";
