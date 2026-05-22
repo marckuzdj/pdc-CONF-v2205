@@ -282,7 +282,7 @@
 
 <!-- 1. TELA DE LOGIN -->
 <div id="screen-login" class="card"> <!-- Adicionado a classe card aqui -->
-    <h3>Passagem de Carga | Conferência v11</h3>
+    <h3>Passagem de Carga | Conferência v12</h3>
     <label>E-mail</label>
     <input type="email" id="login-user" placeholder="seu@email.com">
     
@@ -2227,99 +2227,65 @@ function mostrarPreviewFoto(input) {
 
 function cancelarOcorrenciaEVoltar() {
   // =========================================================================
-  // 🔒 REGRA ORIGINAL: SEGURO CONTRA DUPLICAÇÃO DE PREFIXO NA VARIÁVEL GLOBAL
+  // 💣 HARD CLEAN: ESVAZIAMENTO AGRESSIVO DE CACHE E VARIÁVEIS OPERACIONAIS
   // =========================================================================
-  if (typeof intercorrenciaFinal !== "undefined" && intercorrenciaFinal) {
-    const regexLimparPrefixo = /\s*Volumes\s+confirmados\s*\/\s*/gi;
-    intercorrenciaFinal = intercorrenciaFinal.replace(regexLimparPrefixo, "").trim();
-    console.log("Variável global higienizada (sem duplicações):", intercorrenciaFinal);
+  // Força a destruição imediata de qualquer texto acumulado para evitar vazamento em outras telas
+  if (typeof intercorrenciaFinal !== "undefined") {
+    intercorrenciaFinal = ""; 
+    console.log("✓ [HARD CLEAN] Variável global intercorrenciaFinal redefinida para vazio.");
   }
 
-  // 1. Oculta a tela de ocorrência atual
-  const telaOc = document.getElementById("screenOcorrenciaLote");
-  if (telaOc) {
-    telaOc.style.display = "none";
-    telaOc.classList.add("hidden");
-  }
+  // 1. Esvazia fisicamente os campos de texto e inputs do formulário
+  const txtDescricao = document.getElementById("oc_descricao");
+  if (txtDescricao) txtDescricao.value = ""; 
 
-  // 2. Garante que a tela principal volte a aparecer
-  const telaPrincipal = document.getElementById("screen-main");
-  if (telaPrincipal) {
-    telaPrincipal.style.display = "block";
-    telaPrincipal.classList.remove("hidden");
-  }
+  const txtToken = document.getElementById("oc_token_devolucao");
+  if (txtToken) txtToken.value = ""; 
 
-  // 3. Restaura o botão original "Finalizar Lote"
-  const btnPrincipal = document.querySelector("button[onclick='finalizarLote()']") || document.getElementById("btnEnviarLote");
-  if (btnPrincipal) {
-    btnPrincipal.disabled = false;
-    btnPrincipal.innerHTML = "Finalizar Lote"; 
-    btnPrincipal.style.backgroundColor = ""; 
-    btnPrincipal.style.display = "block"; 
-    btnPrincipal.classList.remove("hidden");
-  }
-
-  // 4. Limpa e esconde o contêiner de assinatura
-  const canvas = document.getElementById('canvasAssinatura');
-  if (canvas) {
-    const ctx = canvas.getContext('2d');
-    if (ctx) ctx.clearRect(0, 0, canvas.width, canvas.height); 
-  }
-
-  const areaAssinatura = document.getElementById("areaAssinatura");
-  if (areaAssinatura) {
-    areaAssinatura.style.display = "none"; 
-    areaAssinatura.classList.add("hidden");
-    areaAssinatura.style.opacity = "1";
-    areaAssinatura.style.pointerEvents = "auto";
-  }
-
-  // 5. Remove a string parcial do cache local da lista também por segurança
-  if (typeof dadosCompletos !== 'undefined' && dadosCompletos.length > 0) {
-    const dadosRomaneio = dadosCompletos.find(item => 
-      (item.Romaneio && item.Romaneio.toString().toUpperCase() === romaneioSendoFinalizado.toString().toUpperCase()) || 
-      (item.romaneio && item.romaneio.toString().toUpperCase() === romaneioSendoFinalizado.toString().toUpperCase()) ||
-      (item.id && item.id.toString().toUpperCase() === romaneioSendoFinalizado.toString().toUpperCase())
-    );
-
-    if (dadosRomaneio) {
-      let historicoObs = (dadosRomaneio.Intercorrencia || dadosRomaneio.intercorrencia || dadosRomaneio.INTERCORRENCIAS || "").toString().trim();
-      const regexLimpezaCompleta = /\s*Volumes\s+confirmados\s*\/\s*CONCLU[ÍI]DO\s*|\s*Volumes\s+confirmados\s*\/\s*/gi;
-      historicoObs = historicoObs.replace(regexLimpezaCompleta, "").trim();
-      
-      if ('Intercorrencia' in dadosRomaneio) dadosRomaneio.Intercorrencia = historicoObs;
-      if ('intercorrencia' in dadosRomaneio) dadosRomaneio.intercorrencia = historicoObs;
-      if ('INTERCORRENCIAS' in dadosRomaneio) dadosRomaneio.INTERCORRENCIAS = historicoObs;
-    }
-  }
-
-  if (typeof enviandoDados !== 'undefined') enviandoDados = false;
-  console.log("Interface retrocedida e travamento de duplicação resolvido com sucesso.");
-
-  // =========================================================================
-  // 🧹 ADIÇÃO CIRÚRGICA DE ENCERRAMENTO: RESET DE TODOS OS INPUTS DO MODAL
-  // =========================================================================
+  // 2. Reseta o select do motivo para a primeira opção padrão (Selecione...)
   const selectMotivo = document.getElementById("oc_motivo");
   if (selectMotivo) selectMotivo.selectedIndex = 0;
 
+  // 3. Limpa o input de arquivo e remove o preview da imagem anexada
   const inputFoto = document.getElementById("oc_foto");
-  if (inputFoto) inputFoto.value = "";
-
+  if (inputFoto) inputFoto.value = ""; 
+ 
   const imgPreview = document.getElementById('oc_foto_preview');
   if (imgPreview) {
     imgPreview.style.display = 'none';
     imgPreview.src = '';
   }
 
+  // 4. Desmarca todos os checkboxes de pedidos do painel de divergências
   const checkboxes = document.querySelectorAll('input[name="oc_itens_selecionados"], input[name="adm_itens_selecionados"]');
-  checkboxes.forEach(cb => { cb.checked = false; });
+  checkboxes.forEach(cb => { 
+    cb.checked = false; 
+  });
+  // =========================================================================
 
-  const txtDescricao = document.getElementById("oc_descricao");
-  if (txtDescricao) txtDescricao.value = "";
+  // 🔄 FLUXO OPERACIONAL NATIVO: RETROCESSO DE TELAS E RESTAURAÇÃO DE BOTÕES (Mantido)
+  const telaOc = document.getElementById("screenOcorrenciaLote") || document.getElementById("screen-intercorrencia");
+  if (telaOc) {
+    telaOc.style.display = "none";
+    telaOc.classList.add("hidden");
+  }
+ 
+  const telaPrincipal = document.getElementById("screen-main");
+  if (telaPrincipal) {
+    telaPrincipal.style.display = "block";
+    telaPrincipal.classList.remove("hidden");
+  }
+ 
+  const btnPrincipal = document.querySelector("button[onclick='finalizarLote()']") || document.getElementById("btnEnviarLote");
+  if (btnPrincipal) {
+    btnPrincipal.disabled = false;
+    btnPrincipal.innerHTML = "Finalizar Lote"; 
+  }
 
-  const txtToken = document.getElementById("oc_token_devolucao");
-  if (txtToken) txtToken.value = "";
+  if (typeof enviandoDados !== 'undefined') enviandoDados = false;
+  console.log("✓ Interface retrocedida para a tela principal com sucesso.");
 }
+
 
 
 
