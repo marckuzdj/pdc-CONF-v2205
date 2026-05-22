@@ -282,7 +282,7 @@
 
 <!-- 1. TELA DE LOGIN -->
 <div id="screen-login" class="card"> <!-- Adicionado a classe card aqui -->
-    <h3>Passagem de Carga | Conferência v8</h3>
+    <h3>Passagem de Carga | Conferência v9</h3>
     <label>E-mail</label>
     <input type="email" id="login-user" placeholder="seu@email.com">
     
@@ -2009,43 +2009,45 @@ function pularOcorrenciaEFinalizar() {
 
 
 async function enviarOcorrenciaFluxo() {
-  const motivo = document.getElementById("oc_motivo").value;
-  const descricao = document.getElementById("oc_descricao").value;
+  // 1. Captura limpa dos valores brutos direto dos elementos no momento exato do clique
+  const motivoVal = document.getElementById("oc_motivo").value;
+  const descricaoInput = document.getElementById("oc_descricao");
   const tokenDev = document.getElementById("oc_token_devolucao").value;
   const fotoInput = document.getElementById("oc_foto");
   const btn = document.getElementById("btnEnviarOcorrenciaFinal");
 
-  // Validações originais obrigatórias mantidas
-  if (!motivo) return alert("⚠️ Selecione o motivo da retenção!");
-  if (!descricao.trim()) return alert("⚠️ Digite uma descrição detalhada!");
+  // Força o isolamento do texto digitado para evitar heranças de escopo global
+  const textoDigitadoUsuario = descricaoInput ? descricaoInput.value.toString().trim() : "";
+
+  // 2. Validações locais obrigatórias
+  if (!motivoVal) return alert("⚠️ Selecione o motivo da retenção!");
+  if (!textoDigitadoUsuario) return alert("⚠️ Digite uma descrição detalhada!");
   if (!tokenDev.trim()) return alert("⚠️ Informe o TOKEN DE DEVOLUÇÃO!");
 
   let temFoto = fotoInput && fotoInput.files && fotoInput.files.length > 0;
-  if (motivo === "Mercadoria Avariada" && !temFoto) {
+  if (motivoVal === "Mercadoria Avariada" && !temFoto) {
     return alert("⚠️ É obrigatório anexar uma foto para evidenciar a Mercadoria Avariada/Danificada!");
   }
 
   // =========================================================================
-  // 🔒 RESGATE FUNCIONALIDADE: CAPTURA E CONCATENAÇÃO DOS PEDIDOS SELECIONADOS
+  // 🧹 FIM DO CACHE: MONTAGEM DA STRING HORIZONTAL EXCLUSIVA POR CLIQUE
   // =========================================================================
-  // Captura todos os checkboxes de pedidos marcados com divergência no painel
   const checkboxes = document.querySelectorAll('input[name="oc_itens_selecionados"]:checked, input[name="adm_itens_selecionados"]:checked');
   
   if (checkboxes.length === 0) {
     return alert("⚠️ É MANDATÓRIO selecionar ao menos um pedido com divergência/avaria no painel central!");
   }
 
-  let itensTextoFormatado = "";
   const listaCodigos = []; 
-  
-  // Varre os elementos e cria uma lista plana separada por vírgulas
   checkboxes.forEach(cb => { 
     if(cb.value) listaCodigos.push(cb.value.toString().trim());
   });
   
-  // Concatena na formatação exata solicitada para ir junto à descrição
-  itensTextoFormatado = "\n[Pedidos Afetados: " + listaCodigos.join(", ") + "]";
-  const descricaoFinalComItens = descricao.trim() + itensTextoFormatado;
+  // CORREÇÃO CRÍTICA: Criamos uma constante local e trocamos o '\n' por um separador em linha reta
+  const sufixoPedidosFormatado = " - [Pedidos Afetados: " + listaCodigos.join(", ") + "]";
+  
+  // String mestre final gerada do zero absoluta, sem acumular lixo anterior
+  const descricaoFinalComItens = textoDigitadoUsuario + sufixoPedidosFormatado;
   // =========================================================================
 
   // Captura direta do romaneio ativo na tela
@@ -2060,6 +2062,7 @@ async function enviarOcorrenciaFluxo() {
 
   btn.disabled = true;
   btn.innerText = "Validando Token...";
+
 
   try {
     // DISPARO DA VALIDAÇÃO DIRETA DO TOKEN NO SERVIDOR (GET)
